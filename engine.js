@@ -96,6 +96,50 @@ export function totalCapital(data) {
   return balances.cash + balances.account;
 }
 
+function dateAtDay(reference, day, forceNext = false) {
+  const safeDay = Math.min(28, Math.max(1, Number(day) || 27));
+  const date = new Date(reference.getFullYear(), reference.getMonth(), safeDay, 12);
+  if (forceNext || date <= reference) date.setMonth(date.getMonth() + 1);
+  return date;
+}
+
+export function spendingPace(data, reference = new Date()) {
+  const incomes = data.incomes || [];
+  if (!incomes.length || data.capitalConfigured === false) return { available: false, reason: !incomes.length ? 'income' : 'capital' };
+  const mainIncome = incomes.slice().sort((a,b) => {
+    const aMain = /stipend|pension|salario/i.test(a.name || '') ? 1 : 0;
+    const bMain = /stipend|pension|salario/i.test(b.name || '') ? 1 : 0;
+    return bMain-aMain || monthlyAmount(b)-monthlyAmount(a);
+  })[0];
+  const payday = dateAtDay(reference, mainIncome.due);
+  const dayMs = 86400000;
+  const daysRemaining = Math.max(1, Math.ceil((payday-reference)/dayMs));
+  const untilPayday = item => {
+    if (item.frequency === 'weekly') return (Number(item.amount)||0) * Math.ceil(daysRemaining/7);
+    if (item.frequency === 'quarterly' || item.frequency === 'yearly' || !item.due) return monthlyAmount(item) * daysRemaining/30;
+    const occurrence = dateAtDay(reference, item.due);
+    return occurrence <= payday ? Number(item.amount)||0 : 0;
+  };
+  const upcomingExpenses = (data.expenses||[]).reduce((sum,item)=>{
+    if(item.frequency!=='weekly' && item.due){
+      const occurrence=dateAtDay(reference,item.due);
+      const alreadyPaid=(data.transactions||[]).some(transaction=>transaction.type==='expense'&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());
+      if(alreadyPaid)return sum;
+    }
+    return sum+untilPayday(item);
+  },0);
+  const upcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>sum+untilPayday(item),0);
+  const plan = calculatePlan(data);
+  const debtSetAside = plan.feasible ? plan.recommendedRate + plan.capitalForDebt : plan.minimumPayments;
+  const liquidNow = Math.max(0,totalCapital(data));
+  const beforeComfort = Math.max(0,liquidNow+upcomingIncome-upcomingExpenses-debtSetAside);
+  const comfortMargin = Math.min(beforeComfort,Math.max(50,beforeComfort*.1));
+  const spendable = Math.max(0,beforeComfort-comfortMargin);
+  const daily = Math.floor(spendable/daysRemaining);
+  const weekly = Math.floor(daily*Math.min(7,daysRemaining));
+  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses, debtSetAside, comfortMargin, spendable, daily, weekly };
+}
+
 export function spendingAnalysis(periods = []) {
   const current = periods[0] || { label: '', entries: [] };
   const previous = periods[1] || { label: '', entries: [] };

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, spendingAnalysis, totalCapital } from '../engine.js';
+import { calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, spendingAnalysis, spendingPace, totalCapital } from '../engine.js';
 import { commitDebt } from '../debt-flow.js';
 import { commitRecurring } from '../recurring-flow.js';
 import { commitCapital } from '../capital-flow.js';
@@ -12,6 +12,10 @@ test('tratta la durata inserita come preferenza senza alterare la proposta',()=>
 test('aggiorna il capitale con i movimenti',()=>{assert.equal(totalCapital({...base,transactions:[{type:'income',amount:100},{type:'expense',amount:40}]}),1060)});
 test('aggiorna separatamente conto e contanti in base al metodo',()=>{const data={...base,transactions:[{type:'income',amount:120,channel:'cash'},{type:'expense',amount:40,channel:'cash'},{type:'expense',amount:75,channel:'account'}]};assert.deepEqual(capitalBalances(data),{cash:180,account:825});assert.equal(totalCapital(data),1005)});
 test('i movimenti precedenti senza metodo restano associati al conto',()=>{assert.deepEqual(capitalBalances({...base,transactions:[{type:'expense',amount:25}]}),{cash:100,account:875})});
+test('calcola ritmo giornaliero fino allo stipendio usando movimenti, spese e debito',()=>{const data={...structuredClone(base),capitalConfigured:true,incomes:[{name:'Stipendio',amount:2000,frequency:'monthly',due:27}],expenses:[{name:'Affitto',amount:300,frequency:'monthly',due:15,essential:true}],debts:[{balance:600,minimumPayment:100}],transactions:[{type:'expense',amount:100,channel:'account'}]};const pace=spendingPace(data,new Date(2026,7,10,12));assert.equal(pace.daysRemaining,17);assert.equal(pace.liquidNow,900);assert.equal(pace.upcomingExpenses,300);assert.equal(pace.debtSetAside,1190);assert.equal(pace.spendable,0);assert.equal(pace.daily,0)});
+test('aggiunge altre entrate previste e conserva un margine di comodità',()=>{const data={...structuredClone(base),capitalConfigured:true,incomes:[{name:'Stipendio',amount:2000,due:27},{name:'Rimborso',amount:200,due:15}],expenses:[],debts:[],transactions:[]};const pace=spendingPace(data,new Date(2026,7,10,12));assert.equal(pace.upcomingIncome,200);assert.equal(pace.comfortMargin,120);assert.equal(pace.spendable,1080);assert.equal(pace.daily,63);assert.equal(pace.weekly,441)});
+test('richiede capitale ed entrata prima di mostrare il ritmo',()=>{assert.equal(spendingPace({...base,capitalConfigured:false},new Date(2026,7,10)).reason,'capital');assert.equal(spendingPace({...base,incomes:[],capitalConfigured:true},new Date(2026,7,10)).reason,'income')});
+test('non conta due volte una spesa programmata già registrata',()=>{const data={...structuredClone(base),capitalConfigured:true,incomes:[{name:'Stipendio',amount:2000,due:27}],expenses:[{id:4,name:'Affitto',amount:300,frequency:'monthly',due:15}],debts:[],transactions:[{type:'expense',amount:300,recurringId:'4',recordedAt:'2026-08-10'}]};const pace=spendingPace(data,new Date(2026,7,10,12));assert.equal(pace.liquidNow,700);assert.equal(pace.upcomingExpenses,0)});
 test('raggruppa le spese per categoria e confronta i periodi',()=>{
  const result=spendingAnalysis([{label:'Agosto',entries:[{category:'Casa',amount:700},{category:'Casa',amount:50},{category:'Svago',amount:150}]},{label:'Luglio',entries:[{category:'Casa',amount:700},{category:'Svago',amount:200}]}]);
  assert.equal(result.total,900);assert.equal(result.previousTotal,900);assert.equal(result.changePercentage,0);
