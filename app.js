@@ -1,0 +1,271 @@
+import { calculatePlan, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, spendingAnalysis, totalCapital } from './engine.js';
+import { commitDebt } from './debt-flow.js';
+import { commitRecurring } from './recurring-flow.js';
+import { commitCapital } from './capital-flow.js';
+
+const demo = {
+  name: 'Giulia', capital: { cash: 180, account: 2470 },
+  incomes: [{ id: 1, name: 'Stipendio', amount: 1960 }],
+  expenses: [
+    { id: 1, name: 'Affitto', amount: 690, essential: true, kind: 'fixed', due: 5 },
+    { id: 2, name: 'Utenze', amount: 145, essential: true, kind: 'fixed', due: 12 },
+    { id: 3, name: 'Spesa alimentare', amount: 310, essential: true, kind: 'variable', due: 1 },
+    { id: 4, name: 'Trasporti', amount: 95, essential: true, kind: 'variable', due: 8 },
+    { id: 5, name: 'Tempo libero', amount: 120, essential: false, kind: 'variable', due: 20 }
+  ],
+  debts: [
+    { id: 1, name: 'Carta di credito', balance: 2100, minimumPayment: 90, months: 10 },
+    { id: 2, name: 'Prestito personale', balance: 4800, minimumPayment: 180, months: 18 }
+  ],
+  transactions: [
+    { id: 1, label: 'Supermercato', amount: 48.6, type: 'expense', date: 'Oggi' },
+    { id: 2, label: 'Stipendio', amount: 1960, type: 'income', date: '2 ago' },
+    { id: 3, label: 'Affitto', amount: 690, type: 'expense', date: '1 ago' }
+  ],
+  spendingPeriods: [
+    { label: 'Agosto 2026', entries: [
+      { label: 'Affitto', category: 'Casa', amount: 690 }, { label: 'Bolletta luce', category: 'Casa', amount: 62 },
+      { label: 'Supermercato', category: 'Alimentari', amount: 248 }, { label: 'Forno e mercato', category: 'Alimentari', amount: 62 },
+      { label: 'Abbonamento autobus', category: 'Trasporti', amount: 39 }, { label: 'Carburante', category: 'Trasporti', amount: 56 },
+      { label: 'Cinema', category: 'Tempo libero', amount: 28 }, { label: 'Cena con amici', category: 'Tempo libero', amount: 92 },
+      { label: 'Farmacia', category: 'Salute', amount: 34 }
+    ]},
+    { label: 'Luglio 2026', entries: [
+      { label: 'Affitto', category: 'Casa', amount: 690 }, { label: 'Bolletta gas', category: 'Casa', amount: 81 },
+      { label: 'Supermercato', category: 'Alimentari', amount: 284 }, { label: 'Mercato', category: 'Alimentari', amount: 54 },
+      { label: 'Trasporto pubblico', category: 'Trasporti', amount: 39 }, { label: 'Carburante', category: 'Trasporti', amount: 72 },
+      { label: 'Cinema e uscite', category: 'Tempo libero', amount: 144 }, { label: 'Farmacia', category: 'Salute', amount: 22 }
+    ]}
+  ],
+  mode: 'common', targetMonths: 18, onboarded: true, profileConfigured: false, capitalConfigured: false
+};
+
+function freshState() {
+  return {
+    name: '', capital: { cash: 0, account: 0 }, incomes: [], expenses: [], debts: [],
+    transactions: [], spendingPeriods: [], mode: 'common', targetMonths: 18,
+    onboarded: false, profileConfigured: false, capitalConfigured: false,
+    capitalMode: 'split', goalEnabled: false, goalMonths: null, goalDate: null,
+    useCapitalAdvance: false, capitalAdvanceConfirmed: false, capitalAdvanceAmount: 0
+  };
+}
+
+const savedState = JSON.parse(localStorage.getItem('rientro-state') || 'null');
+let state = savedState || structuredClone(demo);
+if (!state.spendingPeriods) state.spendingPeriods = structuredClone(demo.spendingPeriods);
+if (!Array.isArray(state.incomes)) state.incomes=[];
+if (!Array.isArray(state.expenses)) state.expenses=[];
+if (savedState && typeof state.capitalConfigured !== 'boolean') state.capitalConfigured=false;
+if (savedState && (!state.profileConfigured || state.name === 'Giulia')) state.profileConfigured = false;
+let view = state.onboarded ? (state.profileConfigured === false ? 'profile' : 'dashboard') : 'onboarding';
+let onboardingStep = 0;
+let deferredInstallPrompt = null;
+const app = document.querySelector('#app');
+const icons = {
+  home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 10v10h13V10M9.5 20v-6h5v6"/></svg>',
+  plan: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10m7 10V4m7 16v-7M3 20h18"/></svg>',
+  move: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h13"/><path d="m17 14 3 3-3 3"/></svg>',
+  analysis: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9m5 10V5m5 14v-7m5 7V3M2 19h20"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+  info: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.5"/></svg>',
+  wallet: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h15a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h12v4M16 13h5"/></svg>'
+};
+
+function save(){ localStorage.setItem('rientro-state', JSON.stringify(state)); }
+function toast(message){ const el=document.querySelector('#toast'); el.textContent=message; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
+function shell(content, active='dashboard') {
+  return `<div class="shell"><aside class="sidebar">
+    <a class="brand" href="#" data-view="dashboard"><span class="brand-mark">R</span><span>Rientro</span></a>
+    <nav aria-label="Navigazione principale">
+      ${navItem('dashboard','home','Oggi',active)}${navItem('plan','plan','Il mio piano',active)}${navItem('transactions','move','Movimenti',active)}${navItem('analysis','analysis','Analisi spese',active)}
+    </nav>
+    <button class="nav-item settings-link" data-settings>Impostazioni</button><div class="sidebar-note"><span>Solo sul tuo dispositivo</span><p>Nessun conto collegato. I tuoi dati restano in questo browser.</p></div>
+  </aside><main>${content}</main>${mobileNav(active)}</div>`;
+}
+function navItem(id, icon, label, active){ return `<button class="nav-item ${active===id?'active':''}" data-view="${id}">${icons[icon]}<span>${label}</span></button>`; }
+function mobileNav(active){return `<nav class="mobile-nav">${navItem('dashboard','home','Oggi',active)}${navItem('plan','plan','Piano',active)}${navItem('transactions','move','Movimenti',active)}${navItem('analysis','analysis','Analisi',active)}<button class="nav-item settings-mobile" data-settings>${icons.info}<span>Impostaz.</span></button><button class="nav-item add-mobile" data-add>${icons.plus}<span>Aggiungi</span></button></nav>`}
+function header(kicker,title,action=''){return `<header class="page-header"><div><span class="kicker">${kicker}</span><h1>${title}</h1></div>${action}</header>`}
+function frequencyLabel(value){return ({weekly:'settimana',monthly:'mese',quarterly:'trimestre',yearly:'anno'})[value]||'mese'}
+function capitalFields(prefix=''){const split=state.capitalMode==='split';return `<fieldset class="capital-choice"><legend>Come vuoi indicarlo?</legend><div class="type-toggle"><label><input type="radio" name="capitalMode" value="total" ${split?'':'checked'}><span>Totale unico</span></label><label><input type="radio" name="capitalMode" value="split" ${split?'checked':''}><span>Dividi conto e contanti</span></label></div><div class="capital-total-fields"><label>Capitale totale<div class="money-input"><b>€</b><input name="total" type="number" min="0" step="1" value="${state.capitalConfigured&&!split?state.capital.account:''}" placeholder="0"></div></label></div><div class="capital-split-fields"><label>Conto<div class="money-input"><b>€</b><input name="account" type="number" min="0" step="1" value="${state.capitalConfigured?state.capital.account:''}" placeholder="0"></div></label><label>Contanti<div class="money-input"><b>€</b><input name="cash" type="number" min="0" step="1" value="${state.capitalConfigured?state.capital.cash:''}" placeholder="0"></div></label><small>Il totale sarà la somma esatta di conto e contanti.</small></div></fieldset><p class="capital-explainer">Il capitale iniziale fotografa ciò che hai oggi: non è un pagamento del debito e non entra automaticamente nel Piano.</p><p class="form-error" hidden></p>`}
+
+function dashboard(){
+  const p=calculatePlan(state), capital=totalCapital(state), progress=Math.min(100, Math.round((1-p.debtTotal/8200)*100));
+  const upcoming=state.expenses.filter(x=>x.due).slice().sort((a,b)=>a.due-b.due).slice(0,3);
+  return shell(`${header('Mercoledì, 5 agosto',`Buongiorno, ${state.name}.`,`<div class="header-actions"><button class="button secondary" data-capital>Imposta capitale</button><button class="button secondary desktop-only" data-add>${icons.plus} Aggiungi</button></div>`)}
+    ${!state.capitalConfigured?`<section class="capital-banner"><div><span class="eyebrow">Dati demo da sostituire</span><h2>Imposta il tuo capitale reale</h2><p>I valori di esempio non vengono trattati come tuoi. Debiti, movimenti e voci ricorrenti resteranno invariati fino alla conferma.</p></div><button class="button" data-capital>Imposta ora</button></section>`:''}
+    <section class="capital-hero reveal"><div><p class="eyebrow">Capitale disponibile</p><div class="capital-value">${state.capitalConfigured?money(capital):'Da impostare'}</div>${state.capitalConfigured?`<button class="text-button" data-toggle-detail>Mostra dettaglio</button><div class="capital-detail" hidden><span>Contanti ${money(state.capital.cash)}</span><span>Conto ${money(state.capital.account)}</span></div>`:`<button class="text-button" data-capital>Inserisci il saldo reale</button>`}</div>
+      <div class="calm-note"><span class="pulse"></span><p><strong>Sei in equilibrio questo mese.</strong><br>La rata del piano lascia ${money(Math.max(0,p.freeCash-p.monthlyRate))} di margine.</p></div></section>
+    <section class="metric-strip reveal"><div><span>Entrate mensili</span><strong>${money(p.income)}</strong></div><div><span>Uscite previste</span><strong>${money(p.expenses)}</strong></div><div><span>Libero dopo le spese</span><strong>${money(p.freeCash)}</strong></div></section>
+    <div class="dashboard-grid"><section class="paper-section reveal"><div class="section-head"><div><span class="eyebrow">Prossimi impegni</span><h2>Da tenere a mente</h2></div><button class="text-button" data-view="transactions">Vedi tutti</button></div>
+      <div class="list">${upcoming.map(x=>`<div class="list-row"><span class="date-tile"><b>${x.due}</b>ago</span><div class="grow"><strong>${x.name}</strong><span>Spesa fissa · prevista ogni ${frequencyLabel(x.frequency)}</span></div><b>${money(monthlyAmount(x))}</b></div>`).join('')||'<p class="muted-empty">Aggiungi un giorno previsto alle spese fisse per vederle qui.</p>'}</div></section>
+      <section class="plan-card reveal"><span class="eyebrow light">Il tuo percorso</span><div class="plan-ring" style="--progress:${Math.max(12,progress)}"><div><strong>${Math.max(12,progress)}%</strong><span>completato</span></div></div><h2>${p.feasible?'Piano sostenibile':'Piano da rivedere'}</h2><p>${p.feasible?`Con ${money(p.monthlyRate)} al mese, puoi arrivare alla fine senza usare la riserva.`:`La rata richiesta supera la quota prudente di ${money(p.sustainable)}.`}</p><button class="button light-button" data-view="plan">Apri il piano</button></section></div>
+    <p class="disclaimer">Rientro offre stime per la pianificazione personale, non consulenza finanziaria o di investimento.</p>`,'dashboard');
+}
+
+function plan(){
+ const p=calculatePlan(state); const months=p.recommendedMonths; const scenarios=planScenarios(state); const goal=evaluateGoal(state);
+ const mainBreakdown=paymentBreakdown(p,p.recommendedRate,months);
+ const formula=b=>b.months?`<div class="plan-formula"><span>${money(b.rate)} × ${b.months} mesi</span>${b.advance?`<span>+ anticipo ${money(b.advance)}</span>`:''}<strong>Totale coperto ${money(b.totalCovered)}</strong>${b.rounding?`<small>Ultima rata ridotta di ${money(b.rounding)} per arrotondamento</small>`:b.residual?`<small>Residuo ${money(b.residual)}</small>`:'<small>Residuo 0 €</small>'}</div>`:'';
+ const configureButton=`<button class="button" data-add-debt>${icons.plus} ${state.debts.length?'Aggiungi un debito':'Configura il mio piano'}</button>`;
+ return shell(`${header('Piano di rientro','Una strada che puoi seguire.',configureButton)}
+  ${!state.debts.length?`<section class="debt-empty"><span class="empty-icon">${icons.plan}</span><span class="eyebrow">Inizia da qui</span><h2>Crea il tuo piano di rientro</h2><p>Aggiungi uno o più debiti. Bastano nome e importo residuo; rata minima e obiettivo restano facoltativi.</p><button class="button" data-add-debt>${icons.plus} Aggiungi il primo debito</button></section>`:`
+  <p class="debt-count">${state.debts.length===1?'1 debito presente':`${state.debts.length} debiti presenti`} · totale ${money(p.debtTotal)}</p><section class="plan-summary ${p.feasible?'':'warning'}"><div><span class="eyebrow">${p.feasible?'Rata consigliata':'Budget da riequilibrare'}</span><strong>${p.feasible?money(p.recommendedRate):'—'}</strong><span>${p.feasible?`Tempo stimato: circa ${months} mesi`:'Non proponiamo una rata che superi il margine disponibile'}</span>${p.feasible?formula(mainBreakdown):''}</div><div class="why"><span>${icons.info}</span><p><strong>${p.feasible?'Come nasce la proposta?':'Perché non c’è ancora una proposta?'}</strong> ${p.feasible?`Dopo tutte le spese restano ${money(p.freeCash)} al mese. La rata conserva ${money(p.freeCash-p.recommendedRate)} di margine e rispetta ${money(p.minimumPayments)} di rate minime. ${p.capitalForDebt?`L’anticipo di ${money(p.capitalForDebt)} è applicato perché lo hai confermato.`:'Il capitale disponibile non viene usato.'}`:`Le rate minime sono ${money(p.minimumPayments)}, mentre dopo le spese restano ${money(p.freeCash)}. Proteggiamo prima le spese essenziali e la riserva.`}</p></div></section>
+  <section class="goal-section ${goal&&!goal.feasible?'goal-warning':''}"><div><div><span class="eyebrow">Il tuo obiettivo</span><h2>${goal?`${goal.label} entro ${goal.months} mesi`:'Vuoi indicare una scadenza?'}</h2><p>${goal?(goal.feasible?`Servirebbero circa ${money(goal.necessaryRate)} al mese, con ${money(goal.margin)} di margine.`:goal.extensionMonths?`Per proteggere spese essenziali e riserva, estendi di ${goal.extensionMonths} mesi fino a circa ${goal.recommendedMonths} mesi, con ${money(goal.recommendedRate)} al mese.`:`Con il budget attuale non emerge ancora una durata sostenibile.`):'Puoi scegliere una durata o una data. Senza obiettivo, resta valida la proposta automatica.'}</p>${goal?formula(goal.breakdown):''}</div><button class="button secondary" data-goal>${goal?'Modifica obiettivo':'Imposta obiettivo'}</button></div></section>
+  <section class="advance-control"><div><span class="eyebrow">Capitale iniziale</span><h2>${state.capitalConfigured?`${money(p.availableCapital)} totali · ${p.capitalForDebt?`anticipo ${money(p.capitalForDebt)}`:'non usati'}`:'Totale reale da impostare'}</h2><p>Il totale unico è il riferimento principale. Per default il piano usa solo gli accantonamenti mensili.</p></div><button class="text-button" ${state.capitalConfigured?'data-advance':'data-capital'}>${state.capitalConfigured?(p.capitalForDebt?'Modifica anticipo':'Valuta un anticipo'):'Imposta capitale'}</button></section>
+  ${!p.feasible?`<section class="alternative budget-alert"><span class="eyebrow">Un passo realistico</span><h2>Prima riduci la pressione mensile</h2><p>Puoi verificare le spese variabili oppure confrontare una durata maggiore. Se le rate minime restano sopra il margine disponibile, valuta direttamente con i creditori se esistono condizioni diverse. Nessuna quota sotto le rate minime viene presentata come sostenibile.</p></section>`:''}
+  <section class="scenario-section"><div class="section-head"><div><span class="eyebrow">Alternative di confronto</span><h2>Prudente, Bilanciato e Veloce</h2></div><small>Solo Bilanciato è evidenziato</small></div><div class="scenario-grid">${scenarios.map(s=>`<article class="scenario ${s.recommended?'featured':''} ${s.feasible?'':'unavailable'}"><div class="scenario-title"><span>${s.name}</span>${s.recommended?'<em>Raccomandata</em>':''}</div><strong>${s.feasible?money(s.rate):'Non sostenibile'}${s.feasible?'<small>/mese</small>':''}</strong><dl><div><dt>Margine residuo</dt><dd>${s.margin===null?'—':money(s.margin)}</dd></div><div><dt>Durata stimata</dt><dd>${s.months?`${s.months} mesi`:'—'}</dd></div></dl>${s.feasible?formula(s.breakdown):''}${s.recommended?'<p>Bilancia il tempo di rientro con un margine mensile.</p>':!s.feasible?'<p>Supererebbe il budget disponibile.</p>':''}</article>`).join('')}</div><p class="estimate-note">Le stime non includono interessi o penali non inseriti.</p></section>
+  <section class="journey"><div class="section-head"><div><span class="eyebrow">I debiti inseriti</span><h2>Dati usati nel calcolo</h2></div><button class="text-button" data-add-debt>Aggiungi</button></div>${state.debts.map((d,i)=>`<div class="debt-step"><span class="step-dot">${i+1}</span><div class="grow"><div class="debt-title"><strong>${d.name}</strong><b>${money(d.balance)}</b></div><div class="debt-meta"><span>Rata minima ${d.minimumPayment?money(d.minimumPayment):'non indicata'}</span><span>${d.targetDate?`Obiettivo: ${new Date(`${d.targetDate}T12:00:00`).toLocaleDateString('it-IT',{month:'long',year:'numeric'})}`:d.months?`Obiettivo: ${d.months} mesi`:'Nessun obiettivo individuale'}</span></div><p>${d.months||d.targetDate?'Questo obiettivo viene valutato insieme al budget e alle altre rate.':'La proposta automatica funziona anche senza una scadenza.'}</p><div class="debt-actions"><button data-edit-debt="${d.id}">Modifica</button><button class="danger-link" data-remove-debt="${d.id}">Rimuovi</button></div></div></div>`).join('')}</section>
+  <section class="reserve"><div>${icons.wallet}<div><span class="eyebrow">Riserva suggerita</span><h2>${money(p.reserveTarget)}</h2></div></div><p>Corrisponde a due mesi delle tue spese essenziali (${money(p.essential)}/mese). Serve a non ricorrere a nuovo debito davanti a un imprevisto.</p></section>
+  <p class="disclaimer">Queste sono stime di pianificazione personale. Non includono interessi o penali non inseriti e non sono consulenza finanziaria.</p>`}`,'plan');
+}
+
+function transactions(){
+ return shell(`${header('Movimenti','Ogni cifra, al suo posto.',`<button class="button secondary desktop-only" data-add>${icons.plus} Aggiungi</button>`)}
+ <section class="transactions"><div class="section-head"><div><span class="eyebrow">Agosto 2026</span><h2>Ultimi movimenti</h2></div><strong>${money(state.transactions.reduce((s,t)=>s+(t.type==='income'?1:-1)*t.amount,0))}</strong></div>
+ <div class="list">${state.transactions.length?state.transactions.map(t=>`<div class="list-row transaction"><span class="transaction-icon ${t.type}">${t.type==='income'?'↓':'↑'}</span><div class="grow"><strong>${t.label}</strong><span>${t.date} · occasionale</span></div><b class="${t.type}">${t.type==='income'?'+':'−'} ${money(t.amount)}</b></div>`).join(''):`<div class="empty"><h2>Ancora nessun movimento occasionale</h2><p>Le voci fisse sono gestite separatamente qui sotto.</p><button class="button" data-add>Aggiungi</button></div>`}</div></section>
+ <section class="recurring-section"><div class="section-head"><div><span class="eyebrow">Budget mensile</span><h2>Entrate e spese fisse</h2></div><button class="text-button" data-add-recurring="income">Aggiungi voce</button></div><p class="recurring-intro">Queste voci alimentano automaticamente budget, riserva e rata consigliata. I movimenti occasionali restano separati.</p><div class="recurring-groups">${recurringGroup('Entrate fisse',state.incomes,'income')}${recurringGroup('Spese fisse',state.expenses,'expense')}</div><p class="disclaimer">Le rate minime dei debiti restano nel Piano e non vengono duplicate. Inserisci qui solo rate esterne non già comprese nei debiti.</p></section>`,'transactions');
+}
+
+function recurringGroup(title,items,type){return `<div><div class="recurring-title"><h3>${title}</h3><button data-add-recurring="${type}">${icons.plus}</button></div>${items.length?items.map(item=>`<article class="recurring-row"><div><strong>${item.name}</strong><span>${money(item.amount)} ogni ${frequencyLabel(item.frequency)}${item.due?` · giorno ${item.due}`:''}</span><small>Previsione mensile ${money(monthlyAmount(item))}</small></div><div><button data-edit-recurring="${type}:${item.id}">Modifica</button><button class="danger-link" data-remove-recurring="${type}:${item.id}">Rimuovi</button></div></article>`).join(''):'<p class="muted-empty">Nessuna voce inserita.</p>'}</div>`}
+
+function analysis(){
+ const result=spendingAnalysis(state.spendingPeriods), max=result.highest?.amount || 1;
+ const direction=result.changePercentage===0?'in linea con':result.changePercentage<0?'più basse di':'più alte di';
+ const change=Math.abs(result.changePercentage || 0), entries=state.spendingPeriods[0]?.entries || [];
+ const fixed=state.expenses.filter(x=>x.kind==='fixed'||(x.essential&&!x.kind)).reduce((sum,x)=>sum+monthlyAmount(x),0);
+ const variable=state.expenses.filter(x=>x.kind==='variable'||(!x.essential&&!x.kind)).reduce((sum,x)=>sum+monthlyAmount(x),0);
+ const debtRates=state.debts.reduce((sum,x)=>sum+Math.max(Number(x.minimumPayment)||0,Math.ceil(Number(x.balance)/Math.max(1,Number(x.months)||18))),0);
+ return shell(`${header('Analisi spese','Una lettura chiara delle tue spese.')}
+ <section class="analysis-hero reveal"><div><span class="eyebrow light">Totale · ${result.currentLabel}</span><strong>${money(result.total)}</strong><p>Le spese sono <b>${change}% ${direction}</b> ${result.previousLabel}. È solo un confronto: serve a orientarti, non a dare giudizi.</p></div><div class="comparison"><span>Periodo precedente</span><strong>${money(result.previousTotal)}</strong><small>${result.changePercentage>0?'↑':result.changePercentage<0?'↓':'→'} ${change}% nel periodo attuale</small></div></section>
+ <section class="expense-types" aria-label="Tipi di spesa mensile"><div><span><i class="fixed"></i>Spese fisse</span><strong>${money(fixed)}</strong></div><div><span><i class="variable"></i>Spese variabili</span><strong>${money(variable)}</strong></div><div><span><i class="debt"></i>Rate e debiti</span><strong>${money(debtRates)}</strong><small>quota mensile stimata</small></div></section>
+ <div class="analysis-grid"><section class="paper-section reveal"><div class="section-head"><div><span class="eyebrow">Distribuzione</span><h2>Dove vanno le spese</h2></div><span class="period-label">${result.currentLabel}</span></div>
+ <div class="category-chart" role="img" aria-label="Grafico delle spese per categoria">${result.categories.map((category,index)=>`<div class="chart-row"><div class="chart-label"><span>${category.name}</span><b>${money(category.amount)}</b></div><div class="chart-track"><i style="--size:${Math.round(category.amount/max*100)}%;--delay:${index*.05}s"></i></div><small>${category.percentage}% del totale</small></div>`).join('')}</div></section>
+ <aside class="insight-card reveal"><span class="eyebrow light">In breve</span><h2>${result.highest?.name || 'Nessuna spesa'} è la voce principale</h2><p>${result.highest?`Incide per il ${result.highest.percentage}% (${money(result.highest.amount)}). Rispetto a ${result.previousLabel}, è ${result.highest.amount===result.highest.previousAmount?'stabile':result.highest.amount>result.highest.previousAmount?`aumentata di ${money(result.highest.amount-result.highest.previousAmount)}`:`diminuita di ${money(result.highest.previousAmount-result.highest.amount)}`}.`:'Aggiungi dei movimenti per iniziare a leggere le tue abitudini.'}</p><div class="expense-legend"><span><i class="fixed"></i>Fisse</span><span><i class="variable"></i>Variabili</span><span><i class="debt"></i>Rate e debiti</span></div><div class="insight-divider"></div><p class="gentle-copy">Non esiste una distribuzione “giusta” in assoluto. Puoi usare questi numeri per capire cosa è stabile e cosa cambia nel tempo.</p></aside></div>
+ <section class="paper-section detail-section reveal"><div class="section-head"><div><span class="eyebrow">Voci e prodotti</span><h2>Cosa compone ogni categoria</h2></div></div><div class="category-details">${result.categories.map((category,index)=>`<details ${index===0?'open':''}><summary><span><i class="category-dot"></i>${category.name}</span><span><b>${money(category.amount)}</b><small>${category.percentage}%</small></span></summary><div>${entries.filter(entry=>entry.category===category.name).sort((a,b)=>b.amount-a.amount).map(entry=>`<p><span>${entry.label}</span><b>${money(entry.amount)}</b></p>`).join('')}</div></details>`).join('')}</div></section>
+ <p class="disclaimer">L’analisi usa i movimenti presenti nella demo e offre un confronto descrittivo, non una valutazione delle tue scelte.</p>`,'analysis');
+}
+
+function onboarding(){
+ const steps=[
+  {title:'Come vuoi che ti chiamiamo?',copy:'Useremo il nome solo per rendere più personale la tua dashboard. Potrai cambiarlo in qualsiasi momento.',fields:`<label>Il tuo nome<input name="name" required maxlength="40" value="${state.profileConfigured ? state.name : ''}" autocomplete="given-name" placeholder="Es. Andrea"></label>`},
+  {title:'Partiamo da ciò che hai oggi.',copy:'Inserisci il capitale disponibile. Puoi tenere separati contanti e conto, ma vedrai sempre anche il totale.',fields:`<label>Contanti <span>opzionale</span><div class="money-input"><b>€</b><input name="cash" type="number" min="0" value="${state.capital.cash||''}" placeholder="0"></div></label><label>Conto <span>opzionale</span><div class="money-input"><b>€</b><input name="account" type="number" min="0" value="${state.capital.account||''}" placeholder="0"></div></label>`},
+  {title:'Quanto entra ogni mese?',copy:'Indica le entrate ricorrenti. Potrai aggiungere quelle occasionali come movimenti.',fields:`<label>Entrate mensili<div class="money-input"><b>€</b><input name="income" required type="number" min="1" value="${state.incomes[0]?.amount||''}" placeholder="Es. 1.800"></div></label>`},
+  {title:'Le spese che contano.',copy:'Una stima realistica ci aiuta a proporti una rata che lasci spazio alla vita quotidiana.',fields:`<label>Spese essenziali mensili<div class="money-input"><b>€</b><input name="essential" required type="number" min="0" value="${state.expenses.filter(x=>x.essential).reduce((s,x)=>s+Number(x.amount),0)||''}" placeholder="Es. 1.100"></div></label><label>Altre spese mensili<div class="money-input"><b>€</b><input name="other" required type="number" min="0" value="${state.expenses.filter(x=>!x.essential).reduce((s,x)=>s+Number(x.amount),0)||''}" placeholder="Es. 250"></div></label>`},
+  {title:'Ora aggiungiamo i debiti.',copy:'Inserisci il totale residuo. Puoi partire da un solo debito e aggiungerne altri in seguito.',fields:`<label>Primo debito<div class="split-input"><input name="debt1name" value="${state.debts[0]?.name||''}" required placeholder="Es. Carta di credito" aria-label="Nome primo debito"><div class="money-input"><b>€</b><input name="debt1" required min="1" type="number" value="${state.debts[0]?.balance||''}" placeholder="0"></div></div></label><label>Secondo debito <span>opzionale</span><div class="split-input"><input name="debt2name" value="${state.debts[1]?.name||''}" placeholder="Es. Prestito personale" aria-label="Nome secondo debito"><div class="money-input"><b>€</b><input name="debt2" min="0" type="number" value="${state.debts[1]?.balance||''}" placeholder="0"></div></div></label>`}
+ ]; const s=steps[onboardingStep];
+ app.innerHTML=`<div class="onboarding"><div class="onboarding-brand"><span class="brand-mark">R</span><span>Rientro</span></div><div class="progress-dots">${steps.map((_,i)=>`<i class="${i<=onboardingStep?'active':''}"></i>`).join('')}</div><form id="onboarding-form"><span class="kicker">Passo ${onboardingStep+1} di ${steps.length}</span><h1>${s.title}</h1><p>${s.copy}</p><div class="form-fields">${s.fields}</div><div class="form-actions">${onboardingStep?'<button type="button" class="button ghost" data-back>Indietro</button>':''}<button class="button" type="submit">${onboardingStep===steps.length-1?'Crea il mio piano':'Continua'}</button></div></form><div class="privacy-note">Nessun collegamento bancario. I dati restano in questo browser.</div></div>`;
+}
+
+function profileSetup(){ app.innerHTML=`<div class="onboarding"><div class="onboarding-brand"><span class="brand-mark">R</span><span>Rientro</span></div><form id="profile-form"><span class="kicker">Primo avvio</span><h1>Nome e capitale reale</h1><p>I dati demo già presenti non verranno cancellati. Prima di entrare nella dashboard, sostituisci il nome e il saldo di esempio.</p><div class="form-fields"><label>Il tuo nome<input name="name" required maxlength="40" value="${state.name || ''}" autocomplete="given-name" placeholder="Es. Andrea"></label>${capitalFields()}</div><div class="form-actions"><button class="button" type="submit">Salva e continua</button></div></form><div class="privacy-note">Nessun collegamento bancario. I dati restano sul dispositivo.</div></div>`; }
+
+function settingsModal(){ return `<div class="modal-backdrop"><form class="modal settings-modal" id="settings-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Impostazioni</span><h2>Il tuo profilo</h2><label>Nome<input name="name" required maxlength="40" value="${state.name || ''}" autocomplete="given-name"></label><button class="button wide" type="submit">Salva nome</button><button class="text-button settings-capital" type="button" data-capital>Aggiorna capitale e ripartizione</button><section class="install-zone"><span class="eyebrow">Sul tuo telefono</span><p>Installa Rientro per aprirla dalla schermata Home, a tutto schermo e anche senza rete.</p><button class="button install-button" type="button" data-install-app>Installa Rientro</button></section><section class="reset-zone"><span class="eyebrow">Riparti da zero</span><p>Cancella capitale, movimenti, entrate, spese, debiti e obiettivi salvati su questo dispositivo.</p><button class="button reset-button" type="button" data-reset-all>Cancella tutti i dati</button></section></form></div>`; }
+
+function resetAllModal(){ return `<div class="modal-backdrop"><div class="modal confirm-modal reset-confirm" role="dialog" aria-modal="true" aria-labelledby="reset-title"><span class="kicker">Conferma richiesta</span><h2 id="reset-title">Vuoi davvero ripartire da zero?</h2><p>Verranno eliminati definitivamente tutti i dati inseriti in Rientro su questo dispositivo:</p><ul><li>capitale e movimenti</li><li>entrate e spese ricorrenti</li><li>debiti, obiettivi e piano di rientro</li></ul><p class="reset-note">Questa operazione non può essere annullata.</p><div class="confirm-actions"><button class="button ghost" data-close>Annulla</button><button class="button danger" data-confirm-reset>Elimina e ricomincia</button></div></div></div>`; }
+
+function capitalModal(){return `<div class="modal-backdrop"><form class="modal" id="capital-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Saldo reale</span><h2>Aggiorna il capitale</h2>${capitalFields()}<button class="button wide" type="submit" data-save-capital>Conferma capitale</button></form></div>`}
+
+function addChoiceModal(){return `<div class="modal-backdrop"><div class="modal add-choice"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Aggiungi</span><h2>Cosa vuoi registrare?</h2><div class="choice-grid"><button data-add-occasional="income"><strong>Entrata occasionale</strong><span>Rimborso, regalo o accredito una tantum</span></button><button data-add-occasional="expense"><strong>Spesa occasionale</strong><span>Un acquisto o pagamento singolo</span></button><button data-add-recurring="income"><strong>Entrata fissa</strong><span>Stipendio, pensione o accredito periodico</span></button><button data-add-recurring="expense"><strong>Spesa fissa</strong><span>Affitto, bolletta, abbonamento o rata esterna</span></button></div></div></div>`}
+
+function modal(defaultType='expense'){ return `<div class="modal-backdrop"><form class="modal" id="movement-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Movimento occasionale</span><h2>Aggiorna il capitale</h2><div class="type-toggle"><label><input type="radio" name="type" value="expense" ${defaultType==='expense'?'checked':''}><span>Spesa occasionale</span></label><label><input type="radio" name="type" value="income" ${defaultType==='income'?'checked':''}><span>Entrata occasionale</span></label></div><label>Descrizione<input name="label" required placeholder="Es. Farmacia"></label><label>Categoria<select name="category"><option>Casa</option><option>Alimentari</option><option>Trasporti</option><option>Tempo libero</option><option>Salute</option><option>Altro</option></select></label><label>Importo<div class="money-input"><b>€</b><input name="amount" required type="number" min="0.01" step="0.01" placeholder="0,00"></div></label><p class="form-error" hidden>Inserisci descrizione e importo.</p><button class="button wide" type="submit">Salva movimento</button></form></div>`; }
+
+function recurringModal(type,item={}){const editing=Boolean(item.id);return `<div class="modal-backdrop"><form class="modal" id="recurring-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">${type==='income'?'Entrata fissa':'Spesa fissa'}</span><h2>${editing?'Modifica la voce':'Aggiungi una voce ricorrente'}</h2><input name="id" type="hidden" value="${item.id||''}"><input name="type" type="hidden" value="${type}"><label>Nome<input name="name" required value="${item.name||''}" placeholder="${type==='income'?'Es. Stipendio':'Es. Affitto'}"></label><label>Importo<div class="money-input"><b>€</b><input name="amount" required type="number" min="0.01" step="0.01" value="${item.amount||''}" placeholder="0"></div></label><label>Frequenza<select name="frequency"><option value="monthly" ${!item.frequency||item.frequency==='monthly'?'selected':''}>Mensile</option><option value="weekly" ${item.frequency==='weekly'?'selected':''}>Settimanale</option><option value="quarterly" ${item.frequency==='quarterly'?'selected':''}>Trimestrale</option><option value="yearly" ${item.frequency==='yearly'?'selected':''}>Annuale</option></select></label><label>Giorno previsto <span>opzionale</span><input name="due" type="number" min="1" max="31" value="${item.due||''}" placeholder="Es. 27"></label>${type==='expense'?`<label class="confirm-check"><input name="essential" type="checkbox" ${item.essential?'checked':''}><span>È una spesa essenziale per la riserva</span></label><p class="modal-copy">Non inserire qui rate minime già associate ai debiti del Piano.</p>`:''}<p class="form-error" hidden>Controlla nome e importo.</p><button class="button wide" type="submit" data-save-recurring>${editing?'Salva modifiche':'Aggiungi al budget'}</button></form></div>`}
+
+function debtModal(debt={}){ const editing=Boolean(debt.id); return `<div class="modal-backdrop debt-backdrop"><form class="modal debt-modal" id="debt-form" role="dialog" aria-modal="true" aria-labelledby="debt-modal-title"><header class="debt-modal-header"><div><span class="kicker">${editing?'Modifica debito':'Nuovo debito'}</span><h2 id="debt-modal-title">${editing?'Modifica il debito':'Aggiungi un debito'}</h2></div><button class="debt-close" type="button" data-close aria-label="Chiudi il modulo">Chiudi <span aria-hidden="true">×</span></button></header><div class="debt-open-cue" role="status"><span></span>Modulo aperto · completa i dati essenziali</div><div class="debt-modal-body"><input type="hidden" name="id" value="${debt.id || ''}"><label>Nome del debito<input name="name" required maxlength="60" value="${debt.name || ''}" placeholder="Es. Carta di credito"></label><label>Importo residuo<div class="money-input"><b>€</b><input name="balance" required type="number" min="1" step="1" value="${debt.balance || ''}" placeholder="2500"></div></label><label>Rata minima obbligatoria <span>opzionale se non esiste</span><div class="money-input"><b>€</b><input name="minimumPayment" type="number" min="0" step="1" value="${debt.minimumPayment || ''}" placeholder="90"></div></label><fieldset><legend>Preferenza personale <span>opzionale</span></legend><div class="objective-grid"><label>Durata da confrontare<input name="months" type="number" min="1" max="600" value="${debt.months || ''}" placeholder="18"></label><span>oppure</span><label>Data da confrontare<input name="targetDate" type="date" value="${debt.targetDate || ''}"></label></div><small>Non devi impostarla: la proposta automatica viene calcolata comunque.</small></fieldset><p class="form-error" hidden>Controlla nome e importo residuo.</p></div><footer class="debt-modal-footer"><button class="button wide" type="submit" data-save-debt>${editing?'Salva modifiche':'Aggiungi al piano'}</button></footer></form></div>`; }
+
+function removeDebtModal(debt){ return `<div class="modal-backdrop"><div class="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="remove-title"><span class="kicker">Rimuovi debito</span><h2 id="remove-title">Rimuovere ${debt.name}?</h2><p>Il debito non comparirà più nel piano e tutte le stime verranno aggiornate.</p><div class="confirm-actions"><button class="button ghost" data-close>Annulla</button><button class="button danger" data-confirm-remove="${debt.id}">Rimuovi</button></div></div></div>`; }
+
+function goalModal(){ return `<div class="modal-backdrop"><form class="modal" id="goal-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Obiettivo complessivo</span><h2>Entro quando vuoi rientrare?</h2><p class="modal-copy">Indica una durata oppure una data per tutti i debiti. Calcoleremo la rata necessaria e, se serve, l’alternativa sostenibile più vicina.</p><label>Durata in mesi<input name="goalMonths" type="number" min="1" max="600" value="${state.goalEnabled&&state.goalMonths?state.goalMonths:''}" placeholder="Es. 6"></label><div class="field-separator">oppure</div><label>Data desiderata<input name="goalDate" type="date" value="${state.goalEnabled&&state.goalDate?state.goalDate:''}"></label><p class="form-error" hidden>Inserisci una durata o una data.</p><button class="button wide" type="submit">Valuta il mio obiettivo</button>${state.goalEnabled?'<button class="text-button remove-goal" type="button" data-clear-goal>Rimuovi obiettivo</button>':''}</form></div>`; }
+
+function advanceModal(){ const p=calculatePlan(state);return `<div class="modal-backdrop"><form class="modal" id="advance-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Scelta facoltativa</span><h2>Usare un anticipo?</h2><p class="modal-copy">Il piano non usa capitale per default. Puoi destinare al massimo ${money(p.maximumAdvance)}, oltre la riserva protetta di ${money(p.protectedCapital)}.</p><label>Importo dell’anticipo<div class="money-input"><b>€</b><input name="amount" type="number" min="0" max="${p.maximumAdvance}" step="1" value="${state.capitalAdvanceAmount||''}" placeholder="0"></div></label><label class="confirm-check"><input name="confirmed" type="checkbox" ${state.capitalAdvanceConfirmed?'checked':''}><span>Confermo di voler includere questo anticipo nel calcolo</span></label><p class="form-error" hidden>Inserisci un importo disponibile e conferma la scelta.</p><button class="button wide" type="submit">Applica anticipo</button>${state.useCapitalAdvance?'<button class="text-button remove-goal" type="button" data-clear-advance>Non usare capitale</button>':''}</form></div>`;}
+
+function render(){ if(view==='onboarding') return onboarding(); if(view==='profile') return profileSetup(); app.innerHTML=view==='dashboard'?dashboard():view==='plan'?plan():view==='analysis'?analysis():transactions(); }
+
+function submitDebtForm(form){
+ const result=commitDebt({state,values:new FormData(form),persist:save,close:()=>form.closest('.modal-backdrop')?.remove(),recalculate:()=>{view='plan';render()},confirm:toast});
+ if(!result.ok){const error=form.querySelector('.form-error');error.textContent=result.error;error.hidden=false}
+ return result;
+}
+
+function submitRecurringForm(form){
+ const result=commitRecurring({state,values:new FormData(form),persist:save,close:()=>form.closest('.modal-backdrop')?.remove(),recalculate:()=>{view='transactions';render()},confirm:toast});
+ if(!result.ok){const error=form.querySelector('.form-error');error.textContent=result.error;error.hidden=false}
+ return result;
+}
+
+function submitCapitalForm(form){
+ const result=commitCapital({state,values:new FormData(form),persist:save});
+ if(!result.ok){const error=form.querySelector('.form-error');error.textContent=result.error;error.hidden=false;return result}
+ form.closest('.modal-backdrop')?.remove();render();toast(`Capitale aggiornato: ${money(result.total)}.`);return result;
+}
+
+document.addEventListener('click',e=>{
+ const saveDebt=e.target.closest('[data-save-debt]');if(saveDebt){e.preventDefault();submitDebtForm(saveDebt.form);return}
+ const saveRecurring=e.target.closest('[data-save-recurring]');if(saveRecurring){e.preventDefault();submitRecurringForm(saveRecurring.form);return}
+ const saveCapital=e.target.closest('[data-save-capital]');if(saveCapital){e.preventDefault();submitCapitalForm(saveCapital.form);return}
+ const v=e.target.closest('[data-view]'); if(v){e.preventDefault();view=v.dataset.view;render();scrollTo(0,0);return}
+ if(e.target.closest('[data-add]')){document.body.insertAdjacentHTML('beforeend',addChoiceModal());return}
+ const occasional=e.target.closest('[data-add-occasional]');if(occasional){e.target.closest('.modal-backdrop')?.remove();document.body.insertAdjacentHTML('beforeend',modal(occasional.dataset.addOccasional));return}
+ const addRecurring=e.target.closest('[data-add-recurring]');if(addRecurring){e.target.closest('.modal-backdrop')?.remove();document.body.insertAdjacentHTML('beforeend',recurringModal(addRecurring.dataset.addRecurring));return}
+ const editRecurring=e.target.closest('[data-edit-recurring]');if(editRecurring){const [type,id]=editRecurring.dataset.editRecurring.split(':');const items=type==='income'?state.incomes:state.expenses;const item=items.find(x=>String(x.id)===id);if(item)document.body.insertAdjacentHTML('beforeend',recurringModal(type,item));return}
+ const removeRecurring=e.target.closest('[data-remove-recurring]');if(removeRecurring){const [type,id]=removeRecurring.dataset.removeRecurring.split(':');if(type==='income')state.incomes=state.incomes.filter(x=>String(x.id)!==id);else state.expenses=state.expenses.filter(x=>String(x.id)!==id);save();render();toast('Voce ricorrente rimossa. Budget aggiornato.');return}
+ if(e.target.closest('[data-add-debt]')){document.body.insertAdjacentHTML('beforeend',debtModal());requestAnimationFrame(()=>document.querySelector('#debt-form input[name="name"]')?.focus({preventScroll:true}));return}
+ if(e.target.closest('[data-goal]')){document.body.insertAdjacentHTML('beforeend',goalModal());return}
+ if(e.target.closest('[data-advance]')){document.body.insertAdjacentHTML('beforeend',advanceModal());return}
+ if(e.target.closest('[data-clear-advance]')){state.useCapitalAdvance=false;state.capitalAdvanceConfirmed=false;state.capitalAdvanceAmount=0;save();e.target.closest('.modal-backdrop').remove();render();toast('Anticipo rimosso dal piano');return}
+ if(e.target.closest('[data-clear-goal]')){state.goalEnabled=false;state.goalMonths=null;state.goalDate=null;save();e.target.closest('.modal-backdrop').remove();render();toast('Obiettivo rimosso');return}
+ const editDebt=e.target.closest('[data-edit-debt]');if(editDebt){const debt=state.debts.find(x=>String(x.id)===editDebt.dataset.editDebt);if(debt){document.body.insertAdjacentHTML('beforeend',debtModal(debt));requestAnimationFrame(()=>document.querySelector('#debt-form input[name="name"]')?.focus({preventScroll:true}))}return}
+ const removeDebt=e.target.closest('[data-remove-debt]');if(removeDebt){const debt=state.debts.find(x=>String(x.id)===removeDebt.dataset.removeDebt);if(debt)document.body.insertAdjacentHTML('beforeend',removeDebtModal(debt));return}
+ const confirmRemove=e.target.closest('[data-confirm-remove]');if(confirmRemove){state.debts=state.debts.filter(x=>String(x.id)!==confirmRemove.dataset.confirmRemove);save();document.querySelector('.modal-backdrop')?.remove();render();toast('Debito rimosso');return}
+ if(e.target.closest('[data-settings]')){document.body.insertAdjacentHTML('beforeend',settingsModal());return}
+ if(e.target.closest('[data-install-app]')){if(deferredInstallPrompt){deferredInstallPrompt.prompt();deferredInstallPrompt.userChoice.then(()=>{deferredInstallPrompt=null});}else{toast(/iphone|ipad|ipod/i.test(navigator.userAgent)?'In Safari: Condividi, poi Aggiungi alla schermata Home.':'Per installare serve la versione pubblicata con HTTPS.');}return}
+ if(e.target.closest('[data-reset-all]')){e.target.closest('.modal-backdrop')?.remove();document.body.insertAdjacentHTML('beforeend',resetAllModal());return}
+ if(e.target.closest('[data-confirm-reset]')){localStorage.removeItem('rientro-state');state=freshState();view='onboarding';onboardingStep=0;document.querySelector('.modal-backdrop')?.remove();render();toast('Dati cancellati. Ripartiamo da zero.');return}
+ if(e.target.closest('[data-capital]')){e.target.closest('.modal-backdrop')?.remove();document.body.insertAdjacentHTML('beforeend',capitalModal());return}
+ if(e.target.closest('[data-close]')||e.target.classList.contains('modal-backdrop')) e.target.closest('.modal-backdrop')?.remove();
+ if(e.target.closest('[data-toggle-detail]')){const d=document.querySelector('.capital-detail');d.hidden=!d.hidden;e.target.textContent=d.hidden?'Mostra dettaglio':'Nascondi dettaglio';}
+ if(e.target.closest('[data-back]')){onboardingStep--;render();}
+ const choice=e.target.closest('[data-choose]');if(choice){const p=calculatePlan(state);state.targetMonths=choice.dataset.choose==='longer'?p.suggestedMonths:Math.ceil(p.debtTotal/Math.max(50,p.sustainable-60));state.mode='common';save();render();toast('Alternativa applicata al piano');}
+});
+
+document.addEventListener('submit',e=>{
+ e.preventDefault(); const fd=new FormData(e.target);
+ if(e.target.id==='movement-form'){
+  const amount=Number(fd.get('amount')),label=String(fd.get('label')).trim(); if(!amount||!label){e.target.querySelector('.form-error').hidden=false;return}
+  const type=fd.get('type');state.transactions.unshift({id:Date.now(),label,amount,type,date:'Oggi'});
+  if(type==='expense') state.spendingPeriods[0].entries.push({label,amount,category:String(fd.get('category')||'Altro')});
+  save();e.target.closest('.modal-backdrop').remove();render();toast('Movimento salvato');return;
+ }
+ if(e.target.id==='recurring-form'){
+  submitRecurringForm(e.target);return;
+ }
+ if(e.target.id==='capital-form'){submitCapitalForm(e.target);return}
+ if(e.target.id==='debt-form'){
+  submitDebtForm(e.target);return;
+ }
+ if(e.target.id==='goal-form'){
+  const goalMonths=Number(fd.get('goalMonths'))||null;const goalDate=String(fd.get('goalDate')||'')||null;if(!goalMonths&&!goalDate){e.target.querySelector('.form-error').hidden=false;return}
+  state.goalEnabled=true;state.goalMonths=goalMonths;state.goalDate=goalDate;save();e.target.closest('.modal-backdrop').remove();render();toast('Obiettivo valutato');return;
+ }
+ if(e.target.id==='advance-form'){
+  const p=calculatePlan({...state,useCapitalAdvance:false,capitalAdvanceConfirmed:false});const amount=Number(fd.get('amount'));const confirmed=fd.get('confirmed')==='on';if(!confirmed||amount<=0||amount>p.maximumAdvance){e.target.querySelector('.form-error').hidden=false;return}
+  state.useCapitalAdvance=true;state.capitalAdvanceConfirmed=true;state.capitalAdvanceAmount=amount;save();e.target.closest('.modal-backdrop').remove();render();toast('Anticipo confermato e separato dalle rate');return;
+ }
+ if(e.target.id==='profile-form' || e.target.id==='settings-form'){
+  state.name=String(fd.get('name')).trim(); if(!state.name)return;
+  if(e.target.id==='profile-form'){const capitalResult=commitCapital({state,values:fd});if(!capitalResult.ok){const error=e.target.querySelector('.form-error');error.textContent=capitalResult.error;error.hidden=false;return}state.profileConfigured=true;view='dashboard';save();render();toast('Profilo e capitale aggiornati.');return}
+  state.profileConfigured=true;save();e.target.closest('.modal-backdrop').remove();render();toast('Nome aggiornato');return;
+ }
+ if(e.target.id==='onboarding-form'){
+  if(onboardingStep===0){state.name=String(fd.get('name')).trim();state.profileConfigured=true}
+  if(onboardingStep===1){state.capital={cash:Number(fd.get('cash')),account:Number(fd.get('account'))};state.capitalConfigured=true;state.capitalMode='split'}
+  if(onboardingStep===2) state.incomes=[{id:1,name:'Entrate ricorrenti',amount:Number(fd.get('income'))}];
+  if(onboardingStep===3) state.expenses=[{id:1,name:'Spese essenziali',amount:Number(fd.get('essential')),essential:true,kind:'fixed',due:5},{id:2,name:'Altre spese',amount:Number(fd.get('other')),essential:false,kind:'variable',due:20}];
+  if(onboardingStep===4){state.debts=[{id:1,name:fd.get('debt1name'),balance:Number(fd.get('debt1')),months:18}];if(Number(fd.get('debt2')))state.debts.push({id:2,name:fd.get('debt2name'),balance:Number(fd.get('debt2')),months:24});state.onboarded=true;view='dashboard';save();render();toast('Il tuo piano è pronto');return}
+  onboardingStep++;save();render();
+ }
+});
+
+render();
+
+window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstallPrompt = event; });
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));

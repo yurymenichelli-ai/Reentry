@@ -1,0 +1,110 @@
+export const money = value => `${Math.round(Number(value) || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')} €`;
+export function monthlyAmount(item) {
+  const amount = Number(item.amount) || 0;
+  return item.frequency === 'weekly' ? amount * 52 / 12 : item.frequency === 'quarterly' ? amount / 3 : item.frequency === 'yearly' ? amount / 12 : amount;
+}
+
+export function calculatePlan(data) {
+  const essential = data.expenses.filter(x => x.essential).reduce((s, x) => s + monthlyAmount(x), 0);
+  const income = data.incomes.reduce((s, x) => s + monthlyAmount(x), 0);
+  const expenses = data.expenses.reduce((s, x) => s + monthlyAmount(x), 0);
+  const debtTotal = data.debts.reduce((s, x) => s + Number(x.balance), 0);
+  const reserveTarget = Math.round(essential * 2);
+  const freeCash = Math.max(0, income - expenses);
+  const sustainable = Math.max(0, Math.floor((freeCash * 0.7) / 10) * 10);
+  const minimumPayments = data.debts.reduce((sum, debt) => sum + (Number(debt.minimumPayment) || 0), 0);
+  const availableCapital = data.capitalConfigured === false ? 0 : Math.max(0, totalCapital(data));
+  const protectedCapital = Math.min(availableCapital, reserveTarget);
+  const maximumAdvance = Math.min(debtTotal, Math.max(0, availableCapital - reserveTarget));
+  const capitalForDebt = data.useCapitalAdvance && data.capitalAdvanceConfirmed
+    ? Math.min(maximumAdvance, Math.max(0, Number(data.capitalAdvanceAmount) || 0)) : 0;
+  const remainingDebt = Math.max(0, debtTotal - capitalForDebt);
+  const preferredRate = data.mode === 'common'
+    ? Math.max(minimumPayments, Math.ceil(debtTotal / Math.max(1, Number(data.targetMonths))))
+    : data.debts.reduce((sum, d) => sum + Math.max(Number(d.minimumPayment) || 0, Math.ceil(Number(d.balance) / Math.max(1, Number(d.months) || 18))), 0);
+  const recommendedRate = remainingDebt ? Math.max(minimumPayments, sustainable) : 0;
+  const feasible = !remainingDebt || (recommendedRate > 0 && minimumPayments <= freeCash && recommendedRate <= freeCash);
+  const recommendedMonths = recommendedRate && feasible ? Math.ceil(remainingDebt / recommendedRate) : null;
+  const suggestedMonths = recommendedMonths;
+  return { essential, income, expenses, debtTotal, reserveTarget, freeCash, sustainable, minimumPayments, availableCapital, protectedCapital, maximumAdvance, capitalForDebt, remainingDebt, preferredRate, monthlyRate: preferredRate, recommendedRate, recommendedMonths, feasible, suggestedMonths };
+}
+
+export function paymentBreakdown(plan, rate, months) {
+  const installmentsTotal = Math.max(0, Number(rate) || 0) * Math.max(0, Number(months) || 0);
+  const totalPlanned = plan.capitalForDebt + installmentsTotal;
+  return { rate, months, advance: plan.capitalForDebt, installmentsTotal, totalCovered: Math.min(plan.debtTotal, totalPlanned), residual: Math.max(0, plan.debtTotal - totalPlanned), rounding: Math.max(0, totalPlanned - plan.debtTotal) };
+}
+
+export function planScenarios(data) {
+  const plan = calculatePlan(data);
+  const minimumPayments = data.debts.reduce((sum, debt) => sum + (Number(debt.minimumPayment) || 0), 0);
+  return [
+    { id: 'prudent', name: 'Prudente', share: .45 },
+    { id: 'balanced', name: 'Bilanciato', share: .7 },
+    { id: 'fast', name: 'Veloce', share: .9 }
+  ].map(({ share, ...scenario }) => {
+    const rate = plan.remainingDebt ? Math.max(minimumPayments, Math.floor((plan.freeCash * share) / 10) * 10) : 0;
+    const feasible = !plan.remainingDebt || (rate > 0 && rate <= plan.freeCash && minimumPayments <= plan.freeCash);
+    const months = rate && feasible ? Math.ceil(plan.remainingDebt / rate) : null;
+    const endDate = months ? new Date(2026, 7 + months, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) : null;
+    return { ...scenario, rate, margin: feasible ? Math.max(0, plan.freeCash - rate) : null, months, endDate, feasible, recommended: scenario.id === 'balanced' && feasible, breakdown: paymentBreakdown(plan, rate, months) };
+  });
+}
+
+function monthsUntil(date, reference = new Date(2026, 7, 1)) {
+  if (!date) return null;
+  const target = new Date(`${date}T12:00:00`);
+  return Math.max(1, (target.getFullYear() - reference.getFullYear()) * 12 + target.getMonth() - reference.getMonth());
+}
+
+export function evaluateGoal(data) {
+  const plan = calculatePlan(data);
+  let months = data.goalEnabled ? (Number(data.goalMonths) || monthsUntil(data.goalDate)) : null;
+  let label = months ? 'tutti i debiti' : null;
+  let necessaryRate = 0;
+  if (months) necessaryRate = Math.max(plan.minimumPayments, Math.ceil(plan.remainingDebt / months));
+  else {
+    const ratio = plan.debtTotal ? plan.remainingDebt / plan.debtTotal : 0;
+    const goals = data.debts.filter(debt => debt.months || debt.targetDate);
+    if (goals.length) {
+      label = goals.length === 1 ? goals[0].name : `${goals.length} debiti`;
+      necessaryRate = data.debts.reduce((sum, debt) => {
+        const debtMonths = Number(debt.months) || monthsUntil(debt.targetDate);
+        const amount = Number(debt.balance) * ratio;
+        return sum + Math.max(Number(debt.minimumPayment) || 0, debtMonths ? Math.ceil(amount / debtMonths) : 0);
+      }, 0);
+      months = Math.max(...goals.map(debt => Number(debt.months) || monthsUntil(debt.targetDate)));
+    }
+  }
+  if (!months) return null;
+  const feasible = necessaryRate <= plan.freeCash && plan.minimumPayments <= plan.freeCash;
+  const recommendedMonths = plan.recommendedMonths;
+  return { label, months, necessaryRate, feasible, margin: feasible ? plan.freeCash - necessaryRate : null, recommendedMonths, extensionMonths: !feasible && recommendedMonths ? Math.max(0, recommendedMonths - months) : 0, recommendedRate: plan.recommendedRate, breakdown: paymentBreakdown(plan, necessaryRate, months) };
+}
+
+export function totalCapital(data) {
+  return Number(data.capital.cash) + Number(data.capital.account) + data.transactions.reduce((sum, t) => sum + (t.type === 'income' ? 1 : -1) * Number(t.amount), 0);
+}
+
+export function spendingAnalysis(periods = []) {
+  const current = periods[0] || { label: '', entries: [] };
+  const previous = periods[1] || { label: '', entries: [] };
+  const aggregate = entries => entries.reduce((result, entry) => {
+    const category = entry.category || 'Altro';
+    result[category] = (result[category] || 0) + Number(entry.amount || 0);
+    return result;
+  }, {});
+  const currentByCategory = aggregate(current.entries || []);
+  const previousByCategory = aggregate(previous.entries || []);
+  const total = Object.values(currentByCategory).reduce((sum, value) => sum + value, 0);
+  const previousTotal = Object.values(previousByCategory).reduce((sum, value) => sum + value, 0);
+  const categories = Object.entries(currentByCategory).map(([name, amount]) => ({
+    name, amount, percentage: total ? Math.round((amount / total) * 100) : 0,
+    previousAmount: previousByCategory[name] || 0
+  })).sort((a, b) => b.amount - a.amount);
+  return {
+    currentLabel: current.label, previousLabel: previous.label, total, previousTotal,
+    changePercentage: previousTotal ? Math.round(((total - previousTotal) / previousTotal) * 100) : null,
+    categories, highest: categories[0] || null, lowest: categories.at(-1) || null
+  };
+}

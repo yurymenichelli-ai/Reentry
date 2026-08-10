@@ -1,0 +1,23 @@
+{
+  "name": "Rientro — Piano personale",
+  "short_name": "Rientro",
+  "description": "Gestisci capitale, spese, entrate e piani di rientro senza collegamento bancario.",
+  "lang": "it-IT",
+  "dir": "ltr",
+  "id": "./",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f3f1ea",
+  "theme_color": "#193b43",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Apri la dashboard", "short_name": "Oggi", "url": "./?source=shortcut" }
+  ]
+}
