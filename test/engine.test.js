@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, spendingAnalysis, spendingPace, totalCapital } from '../engine.js';
+import { accumulationPlan, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, totalCapital } from '../engine.js';
 import { commitDebt } from '../debt-flow.js';
 import { commitRecurring } from '../recurring-flow.js';
 import { commitCapital } from '../capital-flow.js';
@@ -26,6 +26,9 @@ test('gestisce un periodo di analisi vuoto',()=>{const result=spendingAnalysis([
 test('formatta gli importi in italiano con euro in coda',()=>{assert.equal(money(3871),'3.871 €')});
 test('confronta tre scenari con rata, margine e durata',()=>{const scenarios=planScenarios(base);assert.deepEqual(scenarios.map(x=>x.name),['Prudente','Bilanciato','Veloce']);assert.deepEqual(scenarios.map(x=>x.rate),[360,560,720]);assert.deepEqual(scenarios.map(x=>x.margin),[440,240,80]);assert.ok(scenarios.every(x=>x.months>0&&x.endDate))});
 test('rispetta le rate minime esistenti nel piano e negli scenari',()=>{const data={...base,debts:[{balance:4800,months:24,minimumPayment:500}],targetMonths:18};assert.equal(calculatePlan(data).recommendedRate,560);assert.deepEqual(planScenarios(data).map(x=>x.rate),[500,560,720])});
+test('mantiene il piano di rientro scelto',()=>{const selected=selectedDebtPlan({...base,selectedPlanId:'prudent'});assert.equal(selected.id,'prudent');assert.equal(selected.rate,360)});
+test('calcola un accumulo dopo spese, piano scelto e margine',()=>{const saving=accumulationPlan({...base,selectedPlanId:'prudent',accumulationEnabled:true,accumulationName:'Cuscinetto',accumulationTarget:1200,accumulationMonths:12});assert.equal(saving.monthlyRate,100);assert.equal(saving.safeCapacity,360);assert.equal(saving.feasible,true)});
+test('allunga un accumulo troppo rapido senza consumare il margine',()=>{const saving=accumulationPlan({...base,selectedPlanId:'fast',accumulationEnabled:true,accumulationTarget:1200,accumulationMonths:2});assert.equal(saving.requestedRate,600);assert.equal(saving.monthlyRate,0);assert.equal(saving.feasible,false);assert.equal(saving.estimatedMonths,null)});
 test('gestisce il piano senza debiti',()=>{const data={...base,debts:[]};const plan=calculatePlan(data);assert.equal(plan.debtTotal,0);assert.equal(plan.monthlyRate,0);assert.deepEqual(planScenarios(data).map(x=>[x.rate,x.months,x.endDate]),[[0,null,null],[0,null,null],[0,null,null]])});
 test('non propone un piano se le rate minime superano il budget',()=>{const data={...base,debts:[{balance:4800,minimumPayment:900}]};const plan=calculatePlan(data);assert.equal(plan.feasible,false);assert.equal(plan.recommendedMonths,null);assert.ok(planScenarios(data).every(x=>!x.feasible))});
 test('non usa capitale iniziale per default anche se supera la riserva',()=>{const data={...base,capital:{cash:500,account:3000}};const plan=calculatePlan(data);assert.equal(plan.protectedCapital,2000);assert.equal(plan.maximumAdvance,1500);assert.equal(plan.capitalForDebt,0);assert.equal(plan.remainingDebt,4800);assert.equal(plan.recommendedMonths,9)});

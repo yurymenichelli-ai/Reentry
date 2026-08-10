@@ -51,6 +51,27 @@ export function planScenarios(data) {
   });
 }
 
+export function selectedDebtPlan(data) {
+  const scenarios = planScenarios(data);
+  return scenarios.find(scenario => scenario.id === data.selectedPlanId) || scenarios.find(scenario => scenario.recommended) || scenarios[0];
+}
+
+export function accumulationPlan(data) {
+  if (!data.accumulationEnabled) return null;
+  const plan = calculatePlan(data);
+  const debtPlan = selectedDebtPlan(data);
+  const target = Math.max(0, Number(data.accumulationTarget) || 0);
+  const months = Math.max(1, Number(data.accumulationMonths) || 12);
+  const comfortMargin = Math.min(plan.freeCash, Math.max(50, plan.freeCash * .1));
+  const debtRate = plan.remainingDebt ? (debtPlan?.feasible ? debtPlan.rate : plan.minimumPayments) : 0;
+  const safeCapacity = Math.max(0, Math.floor((plan.freeCash - debtRate - comfortMargin) / 10) * 10);
+  const requestedRate = target ? Math.ceil(target / months) : 0;
+  const monthlyRate = Math.min(requestedRate, safeCapacity);
+  const feasible = requestedRate <= safeCapacity;
+  const estimatedMonths = monthlyRate ? Math.ceil(target / monthlyRate) : null;
+  return { name: data.accumulationName || 'Il mio obiettivo', target, months, requestedRate, monthlyRate, safeCapacity, comfortMargin, debtRate, feasible, estimatedMonths };
+}
+
 function monthsUntil(date, reference = new Date(2026, 7, 1)) {
   if (!date) return null;
   const target = new Date(`${date}T12:00:00`);
@@ -130,14 +151,16 @@ export function spendingPace(data, reference = new Date()) {
   },0);
   const upcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>sum+untilPayday(item),0);
   const plan = calculatePlan(data);
-  const debtSetAside = plan.feasible ? plan.recommendedRate + plan.capitalForDebt : plan.minimumPayments;
+  const debtChoice = selectedDebtPlan(data);
+  const debtSetAside = (plan.remainingDebt ? (debtChoice?.feasible ? debtChoice.rate : plan.minimumPayments) : 0) + plan.capitalForDebt;
+  const savingSetAside = accumulationPlan(data)?.monthlyRate || 0;
   const liquidNow = Math.max(0,totalCapital(data));
-  const beforeComfort = Math.max(0,liquidNow+upcomingIncome-upcomingExpenses-debtSetAside);
+  const beforeComfort = Math.max(0,liquidNow+upcomingIncome-upcomingExpenses-debtSetAside-savingSetAside);
   const comfortMargin = Math.min(beforeComfort,Math.max(50,beforeComfort*.1));
   const spendable = Math.max(0,beforeComfort-comfortMargin);
   const daily = Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
-  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses, debtSetAside, comfortMargin, spendable, daily, weekly };
+  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, daily, weekly };
 }
 
 export function spendingAnalysis(periods = []) {
