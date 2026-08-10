@@ -6,9 +6,14 @@ export function commitRecurring({ state, values, now = Date.now, persist = () =>
   const amount = Number(get('amount'));
   const frequency = ['weekly','monthly','quarterly','yearly'].includes(get('frequency')) ? get('frequency') : 'monthly';
   if (!name || !Number.isFinite(amount) || amount <= 0) return { ok: false, error: 'Controlla nome e importo.' };
-  const item = { id: id ? Number(id) : now(), name, amount, frequency, due: Number(get('due')) || null };
-  if (type === 'expense') { item.essential = get('essential') === 'on' || get('essential') === true; item.kind = 'fixed'; }
   const collection = type === 'income' ? state.incomes : state.expenses;
+  const existing=collection.find(entry => String(entry.id) === id);
+  const stamp=now(),created=new Date(typeof stamp==='number'?stamp:Date.now());
+  const due=Number(get('due')) || null;
+  let startsOn=existing?.startsOn||null;
+  if(!id&&due){const first=new Date(created.getFullYear(),created.getMonth(),Math.min(28,due),12);if(due<created.getDate())first.setMonth(first.getMonth()+1);startsOn=first.toISOString().slice(0,10)}
+  const item = { id: id ? Number(id) : stamp, name, amount, frequency, due, ...(startsOn?{startsOn}:{}) };
+  if (type === 'expense') { item.essential = get('essential') === 'on' || get('essential') === true; item.kind = 'fixed'; }
   const index = collection.findIndex(entry => String(entry.id) === id);
   if (index >= 0) collection[index] = item; else collection.push(item);
   persist();
