@@ -56,24 +56,28 @@ export function selectedDebtPlan(data) {
   return scenarios.find(scenario => scenario.id === data.selectedPlanId) || scenarios.find(scenario => scenario.recommended) || scenarios[0];
 }
 
-export function accumulationPlan(data) {
-  if (!data.accumulationEnabled) return null;
+function rawAccumulationPlans(data) {
+  if (Array.isArray(data.accumulationPlans)) return data.accumulationPlans;
+  if (!data.accumulationEnabled) return [];
+  return [{ id:'legacy', name:data.accumulationName, target:data.accumulationTarget, months:data.accumulationMonths, current:data.accumulationCurrent, priority:1 }];
+}
+
+export function accumulationPlans(data) {
   const plan = calculatePlan(data);
   const debtPlan = selectedDebtPlan(data);
-  const totalTarget = Math.max(0, Number(data.accumulationTarget) || 0);
-  const accumulated = Math.min(totalTarget, Math.max(0, Number(data.accumulationCurrent) || 0));
-  const target = Math.max(0, totalTarget - accumulated);
-  const months = Math.max(1, Number(data.accumulationMonths) || 12);
   const comfortMargin = Math.min(plan.freeCash, Math.max(50, plan.freeCash * .1));
   const debtRate = plan.remainingDebt ? (debtPlan?.feasible ? debtPlan.rate : plan.minimumPayments) : 0;
   const safeCapacity = Math.max(0, Math.floor((plan.freeCash - debtRate - comfortMargin) / 10) * 10);
-  const requestedRate = target ? Math.ceil(target / months) : 0;
-  const monthlyRate = Math.min(requestedRate, safeCapacity);
-  const feasible = requestedRate <= safeCapacity;
-  const estimatedMonths = monthlyRate ? Math.ceil(target / monthlyRate) : null;
-  const progress = totalTarget ? Math.round(accumulated / totalTarget * 100) : 0;
-  return { name: data.accumulationName || 'Il mio obiettivo', target, totalTarget, accumulated, progress, months, requestedRate, monthlyRate, safeCapacity, comfortMargin, debtRate, feasible, estimatedMonths };
+  let capacityLeft = safeCapacity;
+  return rawAccumulationPlans(data).slice().sort((a,b)=>(Number(a.priority)||99)-(Number(b.priority)||99)).map((item,index)=>{
+    const totalTarget=Math.max(0,Number(item.target)||0), accumulated=Math.min(totalTarget,Math.max(0,Number(item.current)||0));
+    const target=Math.max(0,totalTarget-accumulated), months=Math.max(1,Number(item.months)||12), requestedRate=target?Math.ceil(target/months):0;
+    const monthlyRate=Math.min(requestedRate,capacityLeft);capacityLeft=Math.max(0,capacityLeft-monthlyRate);
+    return { id:item.id??index+1,name:item.name||'Il mio obiettivo',priority:Number(item.priority)||index+1,target,totalTarget,accumulated,progress:totalTarget?Math.round(accumulated/totalTarget*100):0,months,requestedRate,monthlyRate,safeCapacity,comfortMargin,debtRate,feasible:requestedRate<=monthlyRate,estimatedMonths:monthlyRate?Math.ceil(target/monthlyRate):null };
+  });
 }
+
+export function accumulationPlan(data) { return accumulationPlans(data)[0] || null; }
 
 export function applyPlanContribution(data, values, now = () => Date.now()) {
   const kind = values.kind;
@@ -91,12 +95,13 @@ export function applyPlanContribution(data, values, now = () => Date.now()) {
     debt.balance = Math.max(0, Number(debt.balance) - amount);
     label = `Rata ${debt.name}`;
   } else {
-    if (!data.accumulationEnabled) return { ok:false, error:'Crea prima un piano di accumulo.' };
-    const remaining = Math.max(0, Number(data.accumulationTarget) - (Number(data.accumulationCurrent) || 0));
+    const plans=rawAccumulationPlans(data), saving=plans.find(item=>String(item.id)===String(values.targetId))||plans[0];
+    if (!saving) return { ok:false, error:'Crea prima un piano di accumulo.' };
+    const remaining = Math.max(0, Number(saving.target) - (Number(saving.current) || 0));
     amount = Math.min(requested, remaining);
     if (!amount) return { ok:false, error:'Obiettivo di accumulo già raggiunto.' };
-    data.accumulationCurrent = (Number(data.accumulationCurrent) || 0) + amount;
-    label = `Accumulo · ${data.accumulationName || 'Obiettivo'}`;
+    if(Array.isArray(data.accumulationPlans)) saving.current=(Number(saving.current)||0)+amount; else data.accumulationCurrent=(Number(data.accumulationCurrent)||0)+amount;
+    label = `Accumulo · ${saving.name || 'Obiettivo'}`;
   }
   const stamp = now();
   const recordedAt = typeof stamp === 'string' ? stamp : new Date(stamp).toISOString().slice(0,10);
@@ -188,7 +193,7 @@ export function spendingPace(data, reference = new Date()) {
   const debtChoice = selectedDebtPlan(data);
   const paidThisMonth = kind => (data.transactions||[]).filter(transaction=>transaction.planKind===kind&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear()).reduce((sum,transaction)=>sum+(Number(transaction.amount)||0),0);
   const debtSetAside = Math.max(0,(plan.remainingDebt ? (debtChoice?.feasible ? debtChoice.rate : plan.minimumPayments) : 0) + plan.capitalForDebt-paidThisMonth('debt'));
-  const savingSetAside = Math.max(0,(accumulationPlan(data)?.monthlyRate || 0)-paidThisMonth('saving'));
+  const savingSetAside = Math.max(0,accumulationPlans(data).reduce((sum,item)=>sum+item.monthlyRate,0)-paidThisMonth('saving'));
   const liquidNow = Math.max(0,totalCapital(data));
   const beforeComfort = Math.max(0,liquidNow+upcomingIncome-upcomingExpenses-debtSetAside-savingSetAside);
   const comfortMargin = Math.min(beforeComfort,Math.max(50,beforeComfort*.1));
@@ -196,6 +201,27 @@ export function spendingPace(data, reference = new Date()) {
   const daily = Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
   return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, daily, weekly };
+}
+
+export function spendingPaceInsight(data, reference = new Date()) {
+  const current=spendingPace(data,reference);if(!current.available)return null;
+  const monthTransactions=(data.transactions||[]).filter(item=>!item.planKind&&item.recordedAt&&new Date(`${item.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${item.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear());
+  if(!monthTransactions.length)return { delta:0, text:'Il ritmo è allineato ai dati programmati. Si aggiornerà dopo ogni nuovo movimento.' };
+  const baseline=spendingPace({...data,transactions:(data.transactions||[]).filter(item=>!monthTransactions.includes(item))},reference);
+  const delta=current.daily-baseline.daily;
+  const expenses=monthTransactions.filter(item=>item.type==='expense').reduce((sum,item)=>sum+(Number(item.amount)||0),0), incomes=monthTransactions.filter(item=>item.type==='income').reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+  const text=delta<0?`Dopo ${money(expenses)} di uscite registrate, il ritmo è sceso di ${money(Math.abs(delta))} al giorno.`:delta>0?`Le entrate registrate (${money(incomes)}) hanno aumentato il ritmo di ${money(delta)} al giorno.`:`I movimenti registrati si compensano: il ritmo giornaliero resta invariato.`;
+  return { delta, expenses, incomes, text };
+}
+
+export function monthlyTimeline(data, reference = new Date()) {
+  const month=reference.getMonth(),year=reference.getFullYear(),events=[];
+  (data.incomes||[]).filter(x=>x.due).forEach(x=>events.push({day:Math.min(28,Number(x.due)),label:x.name,amount:Number(x.amount)||0,type:'income',status:'planned'}));
+  (data.expenses||[]).filter(x=>x.due).forEach(x=>events.push({day:Math.min(28,Number(x.due)),label:x.name,amount:Number(x.amount)||0,type:'expense',status:'planned'}));
+  const debt=selectedDebtPlan(data);if((data.debts||[]).length&&debt?.rate)events.push({day:1,label:`Piano di rientro · ${debt.name}`,amount:debt.rate,type:'debt',status:'planned'});
+  accumulationPlans(data).filter(x=>x.monthlyRate).forEach((x,index)=>events.push({day:2+index,label:`Accumulo · ${x.name}`,amount:x.monthlyRate,type:'saving',status:'planned'}));
+  (data.transactions||[]).filter(x=>x.recordedAt&&new Date(`${x.recordedAt}T12:00:00`).getMonth()===month&&new Date(`${x.recordedAt}T12:00:00`).getFullYear()===year).forEach(x=>events.push({day:new Date(`${x.recordedAt}T12:00:00`).getDate(),label:x.label,amount:Number(x.amount)||0,type:x.planKind||x.type,status:'done'}));
+  return events.sort((a,b)=>a.day-b.day||Number(a.status==='done')-Number(b.status==='done'));
 }
 
 export function spendingAnalysis(periods = []) {
