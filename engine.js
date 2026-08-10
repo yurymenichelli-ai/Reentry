@@ -183,12 +183,15 @@ export function spendingPace(data, reference = new Date()) {
   const upcomingExpenses = (data.expenses||[]).reduce((sum,item)=>{
     if(item.frequency!=='weekly' && item.due){
       const occurrence=dateAtDay(reference,item.due);
-      const alreadyPaid=(data.transactions||[]).some(transaction=>transaction.type==='expense'&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());
+      const alreadyPaid=item.id!=null&&(data.transactions||[]).some(transaction=>transaction.type==='expense'&&transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());
       if(alreadyPaid)return sum;
     }
     return sum+untilPayday(item);
   },0);
-  const upcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>sum+untilPayday(item),0);
+  const upcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>{
+    if(item.due){const occurrence=dateAtDay(reference,item.due),alreadyReceived=item.id!=null&&(data.transactions||[]).some(transaction=>transaction.type==='income'&&transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());if(alreadyReceived)return sum}
+    return sum+untilPayday(item);
+  },0);
   const plan = calculatePlan(data);
   const debtChoice = selectedDebtPlan(data);
   const paidThisMonth = kind => (data.transactions||[]).filter(transaction=>transaction.planKind===kind&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear()).reduce((sum,transaction)=>sum+(Number(transaction.amount)||0),0);
@@ -201,6 +204,14 @@ export function spendingPace(data, reference = new Date()) {
   const daily = Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
   return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, daily, weekly };
+}
+
+export function accountForecast(data, reference = new Date()) {
+  const pace=spendingPace(data,reference);if(!pace.available)return null;
+  const balances=capitalBalances(data);
+  const commitments=pace.upcomingExpenses+pace.debtSetAside+pace.savingSetAside;
+  const accountBeforeDaily=Math.max(0,balances.account+pace.upcomingIncome-commitments);
+  return { ...pace, accountNow:balances.account, cashNow:balances.cash, commitments, accountBeforeDaily, totalBeforeDaily:Math.max(0,pace.liquidNow+pace.upcomingIncome-commitments), endComfort:pace.comfortMargin };
 }
 
 export function spendingPaceInsight(data, reference = new Date()) {
@@ -216,11 +227,13 @@ export function spendingPaceInsight(data, reference = new Date()) {
 
 export function monthlyTimeline(data, reference = new Date()) {
   const month=reference.getMonth(),year=reference.getFullYear(),events=[];
-  (data.incomes||[]).filter(x=>x.due).forEach(x=>events.push({day:Math.min(28,Number(x.due)),label:x.name,amount:Number(x.amount)||0,type:'income',status:'planned'}));
-  (data.expenses||[]).filter(x=>x.due).forEach(x=>events.push({day:Math.min(28,Number(x.due)),label:x.name,amount:Number(x.amount)||0,type:'expense',status:'planned'}));
-  const debt=selectedDebtPlan(data);if((data.debts||[]).length&&debt?.rate)events.push({day:1,label:`Piano di rientro · ${debt.name}`,amount:debt.rate,type:'debt',status:'planned'});
-  accumulationPlans(data).filter(x=>x.monthlyRate).forEach((x,index)=>events.push({day:2+index,label:`Accumulo · ${x.name}`,amount:x.monthlyRate,type:'saving',status:'planned'}));
-  (data.transactions||[]).filter(x=>x.recordedAt&&new Date(`${x.recordedAt}T12:00:00`).getMonth()===month&&new Date(`${x.recordedAt}T12:00:00`).getFullYear()===year).forEach(x=>events.push({day:new Date(`${x.recordedAt}T12:00:00`).getDate(),label:x.label,amount:Number(x.amount)||0,type:x.planKind||x.type,status:'done'}));
+  const currentTransactions=(data.transactions||[]).filter(x=>x.recordedAt&&new Date(`${x.recordedAt}T12:00:00`).getMonth()===month&&new Date(`${x.recordedAt}T12:00:00`).getFullYear()===year);
+  const addRecurring=(items,type)=>(items||[]).filter(x=>x.due).forEach(x=>{const done=x.id!=null&&currentTransactions.some(t=>t.type===type&&t.recurringId!=null&&String(t.recurringId)===String(x.id));if(!done){const day=Math.min(28,Number(x.due));events.push({day,label:x.name,amount:Number(x.amount)||0,type,status:day<reference.getDate()?'overdue':'planned'})}});
+  addRecurring(data.incomes,'income');addRecurring(data.expenses,'expense');
+  const paid=kind=>currentTransactions.filter(x=>x.planKind===kind).reduce((sum,x)=>sum+(Number(x.amount)||0),0);
+  const debt=selectedDebtPlan(data),debtRemaining=Math.max(0,(debt?.rate||0)-paid('debt'));if((data.debts||[]).length&&debtRemaining)events.push({day:1,label:`Piano di rientro · ${debt.name}`,amount:debtRemaining,type:'debt',status:1<reference.getDate()?'overdue':'planned'});
+  accumulationPlans(data).filter(x=>x.monthlyRate).forEach((x,index)=>{const contributed=currentTransactions.filter(t=>t.planKind==='saving'&&String(t.planTargetId)===String(x.id)).reduce((sum,t)=>sum+(Number(t.amount)||0),0),remaining=Math.max(0,x.monthlyRate-contributed);if(remaining)events.push({day:2+index,label:`Accumulo · ${x.name}`,amount:remaining,type:'saving',status:2+index<reference.getDate()?'overdue':'planned'})});
+  currentTransactions.forEach(x=>events.push({day:new Date(`${x.recordedAt}T12:00:00`).getDate(),label:x.label,amount:Number(x.amount)||0,type:x.planKind||x.type,status:'done'}));
   return events.sort((a,b)=>a.day-b.day||Number(a.status==='done')-Number(b.status==='done'));
 }
 
