@@ -142,8 +142,9 @@ export function evaluateGoal(data) {
   return { label, months, necessaryRate, feasible, margin: feasible ? plan.freeCash - necessaryRate : null, recommendedMonths, extensionMonths: !feasible && recommendedMonths ? Math.max(0, recommendedMonths - months) : 0, recommendedRate: plan.recommendedRate, breakdown: paymentBreakdown(plan, necessaryRate, months) };
 }
 
-export function capitalBalances(data) {
-  return (data.transactions || []).reduce((balances, transaction) => {
+export function capitalBalances(data, reference = new Date()) {
+  const cutoff=new Date(reference.getFullYear(),reference.getMonth(),reference.getDate(),23,59,59);
+  return (data.transactions || []).filter(transaction=>!transaction.recordedAt||new Date(`${transaction.recordedAt}T12:00:00`)<=cutoff).reduce((balances, transaction) => {
     const channel = transaction.channel === 'cash' ? 'cash' : 'account';
     const sign = transaction.type === 'income' ? 1 : -1;
     balances[channel] += sign * (Number(transaction.amount) || 0);
@@ -151,8 +152,8 @@ export function capitalBalances(data) {
   }, { cash: Number(data.capital?.cash) || 0, account: Number(data.capital?.account) || 0 });
 }
 
-export function totalCapital(data) {
-  const balances = capitalBalances(data);
+export function totalCapital(data, reference = new Date()) {
+  const balances = capitalBalances(data,reference);
   return balances.cash + balances.account;
 }
 
@@ -188,22 +189,27 @@ export function spendingPace(data, reference = new Date()) {
     }
     return sum+untilPayday(item);
   },0);
-  const upcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>{
+  const recurringUpcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>{
     if(item.due){const occurrence=dateAtDay(reference,item.due),alreadyReceived=item.id!=null&&(data.transactions||[]).some(transaction=>transaction.type==='income'&&transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());if(alreadyReceived)return sum}
     return sum+untilPayday(item);
   },0);
+  const futureTransactions=(data.transactions||[]).filter(item=>item.recordedAt&&!item.recurringId&&!item.planKind&&new Date(`${item.recordedAt}T12:00:00`)>reference&&new Date(`${item.recordedAt}T12:00:00`)<=payday);
+  const futureExpenses=futureTransactions.filter(item=>item.type==='expense').reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+  const futureIncome=futureTransactions.filter(item=>item.type==='income').reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+  const upcomingIncome=recurringUpcomingIncome+futureIncome;
+  const allUpcomingExpenses=upcomingExpenses+futureExpenses;
   const plan = calculatePlan(data);
   const debtChoice = selectedDebtPlan(data);
   const paidThisMonth = kind => (data.transactions||[]).filter(transaction=>transaction.planKind===kind&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear()).reduce((sum,transaction)=>sum+(Number(transaction.amount)||0),0);
   const debtSetAside = Math.max(0,(plan.remainingDebt ? (debtChoice?.feasible ? debtChoice.rate : plan.minimumPayments) : 0) + plan.capitalForDebt-paidThisMonth('debt'));
   const savingSetAside = Math.max(0,accumulationPlans(data).reduce((sum,item)=>sum+item.monthlyRate,0)-paidThisMonth('saving'));
-  const liquidNow = Math.max(0,totalCapital(data));
-  const beforeComfort = Math.max(0,liquidNow+upcomingIncome-upcomingExpenses-debtSetAside-savingSetAside);
+  const liquidNow = Math.max(0,totalCapital(data,reference));
+  const beforeComfort = Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-debtSetAside-savingSetAside);
   const comfortMargin = Math.min(beforeComfort,Math.max(50,beforeComfort*.1));
   const spendable = Math.max(0,beforeComfort-comfortMargin);
   const daily = Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
-  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, daily, weekly };
+  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses:allUpcomingExpenses, futureIncome, futureExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, daily, weekly };
 }
 
 export function accountForecast(data, reference = new Date()) {
