@@ -82,8 +82,18 @@ export function evaluateGoal(data) {
   return { label, months, necessaryRate, feasible, margin: feasible ? plan.freeCash - necessaryRate : null, recommendedMonths, extensionMonths: !feasible && recommendedMonths ? Math.max(0, recommendedMonths - months) : 0, recommendedRate: plan.recommendedRate, breakdown: paymentBreakdown(plan, necessaryRate, months) };
 }
 
+export function capitalBalances(data) {
+  return (data.transactions || []).reduce((balances, transaction) => {
+    const channel = transaction.channel === 'cash' ? 'cash' : 'account';
+    const sign = transaction.type === 'income' ? 1 : -1;
+    balances[channel] += sign * (Number(transaction.amount) || 0);
+    return balances;
+  }, { cash: Number(data.capital?.cash) || 0, account: Number(data.capital?.account) || 0 });
+}
+
 export function totalCapital(data) {
-  return Number(data.capital.cash) + Number(data.capital.account) + data.transactions.reduce((sum, t) => sum + (t.type === 'income' ? 1 : -1) * Number(t.amount), 0);
+  const balances = capitalBalances(data);
+  return balances.cash + balances.account;
 }
 
 export function spendingAnalysis(periods = []) {

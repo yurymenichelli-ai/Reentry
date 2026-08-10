@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { calculatePlan, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, spendingAnalysis, totalCapital } from '../engine.js';
+import { calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, paymentBreakdown, planScenarios, spendingAnalysis, totalCapital } from '../engine.js';
 import { commitDebt } from '../debt-flow.js';
 import { commitRecurring } from '../recurring-flow.js';
 import { commitCapital } from '../capital-flow.js';
@@ -10,6 +10,8 @@ const base={capital:{cash:100,account:900},incomes:[{amount:2000}],expenses:[{am
 test('calcola riserva, rata consigliata e tempo senza usare la riserva',()=>{const p=calculatePlan(base);assert.equal(p.reserveTarget,2000);assert.equal(p.protectedCapital,1000);assert.equal(p.capitalForDebt,0);assert.equal(p.freeCash,800);assert.equal(p.recommendedRate,560);assert.equal(p.recommendedMonths,9);assert.equal(p.feasible,true)});
 test('tratta la durata inserita come preferenza senza alterare la proposta',()=>{const short=calculatePlan({...base,targetMonths:6});const long=calculatePlan({...base,targetMonths:36});assert.equal(short.preferredRate,800);assert.equal(long.preferredRate,134);assert.equal(short.recommendedRate,long.recommendedRate);assert.equal(short.recommendedMonths,long.recommendedMonths)});
 test('aggiorna il capitale con i movimenti',()=>{assert.equal(totalCapital({...base,transactions:[{type:'income',amount:100},{type:'expense',amount:40}]}),1060)});
+test('aggiorna separatamente conto e contanti in base al metodo',()=>{const data={...base,transactions:[{type:'income',amount:120,channel:'cash'},{type:'expense',amount:40,channel:'cash'},{type:'expense',amount:75,channel:'account'}]};assert.deepEqual(capitalBalances(data),{cash:180,account:825});assert.equal(totalCapital(data),1005)});
+test('i movimenti precedenti senza metodo restano associati al conto',()=>{assert.deepEqual(capitalBalances({...base,transactions:[{type:'expense',amount:25}]}),{cash:100,account:875})});
 test('raggruppa le spese per categoria e confronta i periodi',()=>{
  const result=spendingAnalysis([{label:'Agosto',entries:[{category:'Casa',amount:700},{category:'Casa',amount:50},{category:'Svago',amount:150}]},{label:'Luglio',entries:[{category:'Casa',amount:700},{category:'Svago',amount:200}]}]);
  assert.equal(result.total,900);assert.equal(result.previousTotal,900);assert.equal(result.changePercentage,0);
