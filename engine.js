@@ -60,7 +60,9 @@ export function accumulationPlan(data) {
   if (!data.accumulationEnabled) return null;
   const plan = calculatePlan(data);
   const debtPlan = selectedDebtPlan(data);
-  const target = Math.max(0, Number(data.accumulationTarget) || 0);
+  const totalTarget = Math.max(0, Number(data.accumulationTarget) || 0);
+  const accumulated = Math.min(totalTarget, Math.max(0, Number(data.accumulationCurrent) || 0));
+  const target = Math.max(0, totalTarget - accumulated);
   const months = Math.max(1, Number(data.accumulationMonths) || 12);
   const comfortMargin = Math.min(plan.freeCash, Math.max(50, plan.freeCash * .1));
   const debtRate = plan.remainingDebt ? (debtPlan?.feasible ? debtPlan.rate : plan.minimumPayments) : 0;
@@ -69,7 +71,39 @@ export function accumulationPlan(data) {
   const monthlyRate = Math.min(requestedRate, safeCapacity);
   const feasible = requestedRate <= safeCapacity;
   const estimatedMonths = monthlyRate ? Math.ceil(target / monthlyRate) : null;
-  return { name: data.accumulationName || 'Il mio obiettivo', target, months, requestedRate, monthlyRate, safeCapacity, comfortMargin, debtRate, feasible, estimatedMonths };
+  const progress = totalTarget ? Math.round(accumulated / totalTarget * 100) : 0;
+  return { name: data.accumulationName || 'Il mio obiettivo', target, totalTarget, accumulated, progress, months, requestedRate, monthlyRate, safeCapacity, comfortMargin, debtRate, feasible, estimatedMonths };
+}
+
+export function applyPlanContribution(data, values, now = () => Date.now()) {
+  const kind = values.kind;
+  const requested = Number(values.amount) || 0;
+  if (requested <= 0 || !['debt','saving'].includes(kind)) return { ok:false, error:'Inserisci un importo valido.' };
+  const channel = values.channel === 'cash' ? 'cash' : 'account';
+  if (requested > Math.max(0,capitalBalances(data)[channel])) return { ok:false, error:`La somma supera il saldo disponibile in ${channel==='cash'?'contanti':'conto'}.` };
+  let amount = requested, label = '';
+  if (kind === 'debt') {
+    const debt = (data.debts || []).find(item => String(item.id) === String(values.targetId));
+    if (!debt) return { ok:false, error:'Debito non trovato.' };
+    amount = Math.min(requested, Number(debt.balance) || 0);
+    if (!amount) return { ok:false, error:'Questo debito risulta già estinto.' };
+    debt.originalBalance = Math.max(Number(debt.originalBalance) || 0, Number(debt.balance) || 0);
+    debt.balance = Math.max(0, Number(debt.balance) - amount);
+    label = `Rata ${debt.name}`;
+  } else {
+    if (!data.accumulationEnabled) return { ok:false, error:'Crea prima un piano di accumulo.' };
+    const remaining = Math.max(0, Number(data.accumulationTarget) - (Number(data.accumulationCurrent) || 0));
+    amount = Math.min(requested, remaining);
+    if (!amount) return { ok:false, error:'Obiettivo di accumulo già raggiunto.' };
+    data.accumulationCurrent = (Number(data.accumulationCurrent) || 0) + amount;
+    label = `Accumulo · ${data.accumulationName || 'Obiettivo'}`;
+  }
+  const stamp = now();
+  const recordedAt = typeof stamp === 'string' ? stamp : new Date(stamp).toISOString().slice(0,10);
+  const transaction = { id: typeof stamp === 'number' ? stamp : Date.now(), label, amount, type:'expense', channel, category:kind==='debt'?'Piano di rientro':'Accantonamento', planKind:kind, planTargetId:values.targetId||null, recordedAt, date:'Oggi' };
+  data.transactions ||= [];
+  data.transactions.unshift(transaction);
+  return { ok:true, amount, transaction };
 }
 
 function monthsUntil(date, reference = new Date(2026, 7, 1)) {
@@ -152,8 +186,9 @@ export function spendingPace(data, reference = new Date()) {
   const upcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>sum+untilPayday(item),0);
   const plan = calculatePlan(data);
   const debtChoice = selectedDebtPlan(data);
-  const debtSetAside = (plan.remainingDebt ? (debtChoice?.feasible ? debtChoice.rate : plan.minimumPayments) : 0) + plan.capitalForDebt;
-  const savingSetAside = accumulationPlan(data)?.monthlyRate || 0;
+  const paidThisMonth = kind => (data.transactions||[]).filter(transaction=>transaction.planKind===kind&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear()).reduce((sum,transaction)=>sum+(Number(transaction.amount)||0),0);
+  const debtSetAside = Math.max(0,(plan.remainingDebt ? (debtChoice?.feasible ? debtChoice.rate : plan.minimumPayments) : 0) + plan.capitalForDebt-paidThisMonth('debt'));
+  const savingSetAside = Math.max(0,(accumulationPlan(data)?.monthlyRate || 0)-paidThisMonth('saving'));
   const liquidNow = Math.max(0,totalCapital(data));
   const beforeComfort = Math.max(0,liquidNow+upcomingIncome-upcomingExpenses-debtSetAside-savingSetAside);
   const comfortMargin = Math.min(beforeComfort,Math.max(50,beforeComfort*.1));
