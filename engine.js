@@ -239,8 +239,8 @@ export function spendingPaceInsight(data, reference = new Date()) {
   if(!monthTransactions.length)return { delta:0, text:'Il ritmo è allineato ai dati programmati. Si aggiornerà dopo ogni nuovo movimento.' };
   const baseline=spendingPace({...data,transactions:(data.transactions||[]).filter(item=>!monthTransactions.includes(item))},reference);
   const delta=current.daily-baseline.daily;
-  const expenses=monthTransactions.filter(item=>item.type==='expense').reduce((sum,item)=>sum+(Number(item.amount)||0),0), incomes=monthTransactions.filter(item=>item.type==='income').reduce((sum,item)=>sum+(Number(item.amount)||0),0);
-  const text=delta<0?`Dopo ${money(expenses)} di uscite registrate, il ritmo è sceso di ${money(Math.abs(delta))} al giorno.`:delta>0?`Le entrate registrate (${money(incomes)}) hanno aumentato il ritmo di ${money(delta)} al giorno.`:`I movimenti registrati si compensano: il ritmo giornaliero resta invariato.`;
+  const expenses=monthTransactions.filter(item=>item.type==='expense').reduce((sum,item)=>sum+(Number(item.amount)||0),0), incomes=monthTransactions.filter(item=>item.type==='income').reduce((sum,item)=>sum+(Number(item.amount)||0),0),endOfToday=new Date(reference.getFullYear(),reference.getMonth(),reference.getDate(),23,59,59),future=monthTransactions.filter(item=>new Date(`${item.recordedAt}T12:00:00`)>endOfToday),onlyFuture=future.length===monthTransactions.length;
+  const text=delta<0?`${onlyFuture?'Hai programmato':'Tra uscite registrate e programmate ci sono'} ${money(expenses)} di uscite: il ritmo è sceso di ${money(Math.abs(delta))} al giorno.`:delta>0?`${onlyFuture?'Le entrate programmate':'Le entrate registrate e programmate'} (${money(incomes)}) hanno aumentato il ritmo di ${money(delta)} al giorno.`:`I movimenti registrati e programmati si compensano: il ritmo giornaliero resta invariato.`;
   return { delta, expenses, incomes, text };
 }
 
@@ -252,7 +252,8 @@ export function monthlyTimeline(data, reference = new Date()) {
   const paid=kind=>currentTransactions.filter(x=>x.planKind===kind).reduce((sum,x)=>sum+(Number(x.amount)||0),0);
   const debt=selectedDebtPlan(data),debtRemaining=Math.max(0,(debt?.rate||0)-paid('debt'));if((data.debts||[]).length&&debtRemaining)events.push({day:1,label:`Piano di rientro · ${debt.name}`,amount:debtRemaining,type:'debt',status:1<reference.getDate()?'overdue':'planned',source:'plan',targetId:data.debts[0]?.id});
   accumulationPlans(data).filter(x=>x.monthlyRate).forEach((x,index)=>{const contributed=currentTransactions.filter(t=>t.planKind==='saving'&&String(t.planTargetId)===String(x.id)).reduce((sum,t)=>sum+(Number(t.amount)||0),0),remaining=Math.max(0,x.monthlyRate-contributed);if(remaining)events.push({day:2+index,label:`Accumulo · ${x.name}`,amount:remaining,type:'saving',status:2+index<reference.getDate()?'overdue':'planned',source:'plan',targetId:x.id})});
-  currentTransactions.forEach(x=>events.push({day:new Date(`${x.recordedAt}T12:00:00`).getDate(),label:x.label,amount:Number(x.amount)||0,type:x.planKind||x.type,status:'done'}));
+  const endOfToday=new Date(reference.getFullYear(),reference.getMonth(),reference.getDate(),23,59,59);
+  currentTransactions.forEach(x=>{const occurrence=new Date(`${x.recordedAt}T12:00:00`),planned=occurrence>endOfToday;events.push({day:occurrence.getDate(),label:x.label,amount:Number(x.amount)||0,type:x.planKind||x.type,status:planned?'planned':'done',source:'transaction',targetId:x.id})});
   return events.sort((a,b)=>a.day-b.day||Number(a.status==='done')-Number(b.status==='done'));
 }
 
