@@ -35,24 +35,29 @@ export function paymentBreakdown(plan, rate, months) {
   return { rate, months, advance: plan.capitalForDebt, installmentsTotal, totalCovered: Math.min(plan.debtTotal, totalPlanned), residual: Math.max(0, plan.debtTotal - totalPlanned), rounding: Math.max(0, totalPlanned - plan.debtTotal) };
 }
 
-export function planScenarios(data) {
+export function planScenarios(data, reference = new Date()) {
   const plan = calculatePlan(data);
   const minimumPayments = data.debts.reduce((sum, debt) => sum + (Number(debt.minimumPayment) || 0), 0);
+  const incomes=data.incomes||[],mainIncome=incomes.slice().sort((a,b)=>/stipend|pension|salario/i.test(b.name||'')-/stipend|pension|salario/i.test(a.name||'')||monthlyAmount(b)-monthlyAmount(a))[0],payday=dateAtDay(reference,mainIncome?.due),cycleStart=new Date(payday);cycleStart.setMonth(cycleStart.getMonth()-1);
+  const cycleTransactions=(data.transactions||[]).filter(item=>item.recordedAt&&!item.planKind&&new Date(`${item.recordedAt}T12:00:00`)>cycleStart&&new Date(`${item.recordedAt}T12:00:00`)<=payday);
+  const extraIncome=cycleTransactions.filter(item=>item.type==='income'&&!item.recurringId).reduce((sum,item)=>sum+(Number(item.amount)||0),0);
+  const occasionalExpenses=cycleTransactions.filter(item=>item.type==='expense'&&!item.recurringId).reduce((sum,item)=>sum+(Number(item.amount)||0),0);
   return [
-    { id: 'prudent', name: 'Prudente', share: .45 },
-    { id: 'balanced', name: 'Bilanciato', share: .7 },
-    { id: 'fast', name: 'Veloce', share: .9 }
+    { id: 'prudent', name: 'Prudente', share: .2 },
+    { id: 'balanced', name: 'Bilanciato', share: .35 },
+    { id: 'fast', name: 'Veloce', share: .5 }
   ].map(({ share, ...scenario }) => {
-    const rate = plan.remainingDebt ? Math.max(minimumPayments, Math.floor((plan.freeCash * share) / 10) * 10) : 0;
-    const feasible = !plan.remainingDebt || (rate > 0 && rate <= plan.freeCash && minimumPayments <= plan.freeCash);
+    const adaptiveCapacity=Math.max(0,Math.floor((plan.freeCash*share+extraIncome*share-occasionalExpenses)/10)*10);
+    const rate = plan.remainingDebt ? Math.min(plan.remainingDebt,Math.max(minimumPayments,adaptiveCapacity)) : 0;
+    const cycleAvailable=Math.max(0,plan.freeCash+extraIncome-occasionalExpenses),feasible=!plan.remainingDebt||(rate>0&&minimumPayments<=cycleAvailable);
     const months = rate && feasible ? Math.ceil(plan.remainingDebt / rate) : null;
-    const endDate = months ? new Date(2026, 7 + months, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }) : null;
-    return { ...scenario, rate, margin: feasible ? Math.max(0, plan.freeCash - rate) : null, months, endDate, feasible, recommended: scenario.id === 'balanced' && feasible, breakdown: paymentBreakdown(plan, rate, months) };
+    const endDate = months ? new Date(reference.getFullYear(),reference.getMonth()+months,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'}) : null;
+    return { ...scenario,share,rate,margin:feasible?Math.max(0,cycleAvailable-rate):null,livingMoney:feasible?Math.max(0,cycleAvailable-rate):null,extraIncome,occasionalExpenses,adaptiveCapacity,months,endDate,feasible,recommended:scenario.id==='balanced'&&feasible,breakdown:paymentBreakdown(plan,rate,months) };
   });
 }
 
-export function selectedDebtPlan(data) {
-  const scenarios = planScenarios(data);
+export function selectedDebtPlan(data, reference = new Date()) {
+  const scenarios = planScenarios(data,reference);
   return scenarios.find(scenario => scenario.id === data.selectedPlanId) || scenarios.find(scenario => scenario.recommended) || scenarios[0];
 }
 
@@ -212,7 +217,7 @@ export function spendingPace(data, reference = new Date()) {
   const upcomingIncome=recurringUpcomingIncome+futureIncome;
   const allUpcomingExpenses=upcomingExpenses+futureExpenses;
   const plan = calculatePlan(data);
-  const debtChoice = selectedDebtPlan(data);
+  const debtChoice = selectedDebtPlan(data,reference);
   const paidThisMonth = kind => (data.transactions||[]).filter(transaction=>transaction.planKind===kind&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear()).reduce((sum,transaction)=>sum+(Number(transaction.amount)||0),0);
   const debtSetAside = Math.max(0,(plan.remainingDebt ? (debtChoice?.feasible ? debtChoice.rate : plan.minimumPayments) : 0) + plan.capitalForDebt-paidThisMonth('debt'));
   const savingSetAside = Math.max(0,accumulationPlans(data).reduce((sum,item)=>sum+item.monthlyRate,0)-paidThisMonth('saving'));
