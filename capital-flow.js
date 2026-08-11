@@ -1,4 +1,4 @@
-export function commitCapital({ state, values, persist = () => {} }) {
+export function commitCapital({ state, values, persist = () => {}, now = () => new Date() }) {
   const get = key => typeof values.get === 'function' ? values.get(key) : values[key];
   const mode = get('capitalMode') === 'split' ? 'split' : 'total';
   const account = mode === 'split' ? Number(get('account')) : Number(get('total'));
@@ -7,6 +7,8 @@ export function commitCapital({ state, values, persist = () => {} }) {
   state.capital = { account, cash };
   state.capitalConfigured = true;
   state.capitalMode = mode;
+  const stamp=now(),date=stamp instanceof Date?stamp:new Date(stamp);
+  state.capitalAsOf=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
   persist();
   return { ok: true, capital: state.capital, total: account + cash, mode };
 }

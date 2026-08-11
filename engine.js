@@ -183,6 +183,8 @@ export function spendingPace(data, reference = new Date()) {
   };
   const normalized=value=>String(value||'').toLocaleLowerCase('it-IT').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
   const alreadyRecordedThisMonth=(item,type)=>{
+    const capitalAsOf=data.capitalAsOf?new Date(`${data.capitalAsOf}T12:00:00`):null,coveredByOpeningBalance=capitalAsOf&&capitalAsOf.getMonth()===reference.getMonth()&&capitalAsOf.getFullYear()===reference.getFullYear()&&Number(item.due)>0&&Number(item.due)<=capitalAsOf.getDate();
+    if(coveredByOpeningBalance)return true;
     const candidates=(data.transactions||[]).filter(transaction=>transaction.type===type&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`)<=reference&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear());
     const exactLink=item.id!=null&&candidates.some(transaction=>transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id));
     if(exactLink)return true;
