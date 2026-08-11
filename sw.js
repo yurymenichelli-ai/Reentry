@@ -1,11 +1,11 @@
-const CACHE_NAME = 'rientro-shell-v24';
+const CACHE_NAME = 'rientro-shell-v25';
 const APP_SHELL = [
   './',
   './index.html',
-  './styles.css?v=24',
-  './app.js?v=24',
-  './engine.js?v=24',
-  './capital-flow.js?v=24',
+  './styles.css?v=25',
+  './app.js?v=25',
+  './engine.js?v=25',
+  './capital-flow.js?v=25',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',

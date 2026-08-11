@@ -1,7 +1,7 @@
-import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=24';
+import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=25';
 import { commitDebt } from './debt-flow.js';
 import { commitRecurring } from './recurring-flow.js';
-import { commitCapital } from './capital-flow.js?v=24';
+import { commitCapital } from './capital-flow.js?v=25';
 
 const demo = {
   name: 'Giulia', capital: { cash: 180, account: 2470 },

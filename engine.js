@@ -116,15 +116,15 @@ export function applyPlanContribution(data, values, now = () => Date.now()) {
   return { ok:true, amount, transaction };
 }
 
-function monthsUntil(date, reference = new Date(2026, 7, 1)) {
+function monthsUntil(date, reference = new Date()) {
   if (!date) return null;
   const target = new Date(`${date}T12:00:00`);
   return Math.max(1, (target.getFullYear() - reference.getFullYear()) * 12 + target.getMonth() - reference.getMonth());
 }
 
-export function evaluateGoal(data) {
+export function evaluateGoal(data, reference = new Date()) {
   const plan = calculatePlan(data);
-  let months = data.goalEnabled ? (Number(data.goalMonths) || monthsUntil(data.goalDate)) : null;
+  let months = data.goalEnabled ? (Number(data.goalMonths) || monthsUntil(data.goalDate,reference)) : null;
   let label = months ? 'tutti i debiti' : null;
   let necessaryRate = 0;
   if (months) necessaryRate = Math.max(plan.minimumPayments, Math.ceil(plan.remainingDebt / months));
@@ -134,17 +134,17 @@ export function evaluateGoal(data) {
     if (goals.length) {
       label = goals.length === 1 ? goals[0].name : `${goals.length} debiti`;
       necessaryRate = data.debts.reduce((sum, debt) => {
-        const debtMonths = Number(debt.months) || monthsUntil(debt.targetDate);
+        const debtMonths = Number(debt.months) || monthsUntil(debt.targetDate,reference);
         const amount = Number(debt.balance) * ratio;
         return sum + Math.max(Number(debt.minimumPayment) || 0, debtMonths ? Math.ceil(amount / debtMonths) : 0);
       }, 0);
-      months = Math.max(...goals.map(debt => Number(debt.months) || monthsUntil(debt.targetDate)));
+      months = Math.max(...goals.map(debt => Number(debt.months) || monthsUntil(debt.targetDate,reference)));
     }
   }
   if (!months) return null;
-  const feasible = necessaryRate <= plan.freeCash && plan.minimumPayments <= plan.freeCash;
-  const recommendedMonths = plan.recommendedMonths;
-  return { label, months, necessaryRate, feasible, margin: feasible ? plan.freeCash - necessaryRate : null, recommendedMonths, extensionMonths: !feasible && recommendedMonths ? Math.max(0, recommendedMonths - months) : 0, recommendedRate: plan.recommendedRate, breakdown: paymentBreakdown(plan, necessaryRate, months) };
+  const flexible=selectedDebtPlan(data,reference),cycleAvailable=(flexible.livingMoney||0)+(flexible.rate||0),feasible=flexible.feasible&&necessaryRate<=flexible.rate;
+  const recommendedMonths=flexible.months;
+  return { label,months,necessaryRate,feasible,margin:feasible?Math.max(0,cycleAvailable-necessaryRate):null,recommendedMonths,extensionMonths:!feasible&&recommendedMonths?Math.max(0,recommendedMonths-months):0,recommendedRate:flexible.rate,breakdown:paymentBreakdown(plan,necessaryRate,months) };
 }
 
 export function capitalBalances(data, reference = new Date()) {
