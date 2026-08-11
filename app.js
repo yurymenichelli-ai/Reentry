@@ -1,4 +1,4 @@
-import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js';
+import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=20';
 import { commitDebt } from './debt-flow.js';
 import { commitRecurring } from './recurring-flow.js';
 import { commitCapital } from './capital-flow.js';
@@ -310,4 +310,4 @@ document.addEventListener('change',e=>{if(e.target.matches('#movement-form input
 render();
 
 window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredInstallPrompt = event; });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(registration=>registration.update()).catch(() => {}));
