@@ -245,7 +245,8 @@ export function spendingPaceInsight(data, reference = new Date()) {
   const baseline=spendingPace({...data,transactions:(data.transactions||[]).filter(item=>!monthTransactions.includes(item))},reference);
   const delta=current.daily-baseline.daily;
   const expenses=monthTransactions.filter(item=>item.type==='expense').reduce((sum,item)=>sum+(Number(item.amount)||0),0), incomes=monthTransactions.filter(item=>item.type==='income').reduce((sum,item)=>sum+(Number(item.amount)||0),0),endOfToday=new Date(reference.getFullYear(),reference.getMonth(),reference.getDate(),23,59,59),future=monthTransactions.filter(item=>new Date(`${item.recordedAt}T12:00:00`)>endOfToday),onlyFuture=future.length===monthTransactions.length;
-  const text=delta<0?`${onlyFuture?'Hai programmato':'Tra uscite registrate e programmate ci sono'} ${money(expenses)} di uscite: il ritmo è sceso di ${money(Math.abs(delta))} al giorno.`:delta>0?`${onlyFuture?'Le entrate programmate':'Le entrate registrate e programmate'} (${money(incomes)}) hanno aumentato il ritmo di ${money(delta)} al giorno.`:`I movimenti registrati e programmati si compensano: il ritmo giornaliero resta invariato.`;
+  const debtRelief=Math.max(0,baseline.debtSetAside-current.debtSetAside);
+  const text=delta<0?`${onlyFuture?'Hai programmato':'Tra uscite registrate e programmate ci sono'} ${money(expenses)} di uscite: il ritmo è sceso di ${money(Math.abs(delta))} al giorno.`:delta>0?`${onlyFuture?'Le entrate programmate':'Le entrate registrate e programmate'} (${money(incomes)}) hanno aumentato il ritmo di ${money(delta)} al giorno.`:expenses&&debtRelief?`Le uscite del ciclo (${money(expenses)}) hanno ridotto la quota debiti di ${money(debtRelief)}: il ritmo per vivere resta protetto.`:`I movimenti registrati e programmati si compensano: il ritmo giornaliero resta invariato.`;
   return { delta, expenses, incomes, text };
 }
 
