@@ -181,7 +181,17 @@ export function spendingPace(data, reference = new Date()) {
     const occurrence = dateAtDay(reference, item.due);
     return occurrence <= payday ? Number(item.amount)||0 : 0;
   };
+  const normalized=value=>String(value||'').toLocaleLowerCase('it-IT').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  const alreadyRecordedThisMonth=(item,type)=>{
+    const candidates=(data.transactions||[]).filter(transaction=>transaction.type===type&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`)<=reference&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===reference.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===reference.getFullYear());
+    const exactLink=item.id!=null&&candidates.some(transaction=>transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id));
+    if(exactLink)return true;
+    const sameName=candidates.some(transaction=>normalized(transaction.label)===normalized(item.name));
+    const sameAmount=candidates.filter(transaction=>Math.abs((Number(transaction.amount)||0)-(Number(item.amount)||0))<.01),sourceItems=type==='expense'?(data.expenses||[]):incomes,uniqueRecurringAmount=sourceItems.filter(entry=>Math.abs((Number(entry.amount)||0)-(Number(item.amount)||0))<.01).length===1;
+    return sameName||(sameAmount.length===1&&uniqueRecurringAmount);
+  };
   const upcomingExpenses = (data.expenses||[]).reduce((sum,item)=>{
+    if(alreadyRecordedThisMonth(item,'expense'))return sum;
     if(item.frequency!=='weekly' && item.due){
       const occurrence=dateAtDay(reference,item.due);
       const alreadyPaid=item.id!=null&&(data.transactions||[]).some(transaction=>transaction.type==='expense'&&transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());
@@ -190,6 +200,7 @@ export function spendingPace(data, reference = new Date()) {
     return sum+untilPayday(item);
   },0);
   const recurringUpcomingIncome = incomes.filter(item=>item!==mainIncome).reduce((sum,item)=>{
+    if(alreadyRecordedThisMonth(item,'income'))return sum;
     if(item.due){const occurrence=dateAtDay(reference,item.due),alreadyReceived=item.id!=null&&(data.transactions||[]).some(transaction=>transaction.type==='income'&&transaction.recurringId!=null&&String(transaction.recurringId)===String(item.id)&&transaction.recordedAt&&new Date(`${transaction.recordedAt}T12:00:00`).getMonth()===occurrence.getMonth()&&new Date(`${transaction.recordedAt}T12:00:00`).getFullYear()===occurrence.getFullYear());if(alreadyReceived)return sum}
     return sum+untilPayday(item);
   },0);
