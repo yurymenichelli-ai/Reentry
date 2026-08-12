@@ -2,6 +2,7 @@ import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribu
 import { commitDebt } from './debt-flow.js';
 import { commitRecurring } from './recurring-flow.js';
 import { commitCapital } from './capital-flow.js?v=25';
+import { cloudUser, initializeCloud, loadCloudWallet, queueCloudWalletSave, saveCloudWallet, signInCloud, signOutCloud, signUpCloud } from './cloud.js?v=29';
 
 const demo = {
   name: 'Giulia', capital: { cash: 180, account: 2470 },
@@ -54,6 +55,7 @@ function freshState() {
 
 const savedState = JSON.parse(localStorage.getItem('rientro-state') || 'null');
 let state = savedState || freshState();
+let cloudReady = false;
 if (!state.spendingPeriods) state.spendingPeriods = [];
 if (!Array.isArray(state.incomes)) state.incomes=[];
 if (!Array.isArray(state.expenses)) state.expenses=[];
@@ -67,6 +69,18 @@ if(savedState && Number(state.logicVersion||0)<2){
   state.logicVersion=2;save();
 }
 if(savedState&&state.capitalConfigured&&!state.capitalAsOf){const today=new Date();state.capitalAsOf=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;state.logicVersion=3;save()}
+const cloudInit = await initializeCloud();
+if (cloudInit.user) {
+  try {
+    const remoteWallet = await loadCloudWallet();
+    if (remoteWallet) {
+      localStorage.setItem('rientro-local-backup', JSON.stringify(state));
+      state = { ...freshState(), ...remoteWallet };
+      localStorage.setItem('rientro-state', JSON.stringify(state));
+    } else await saveCloudWallet(state);
+  } catch (error) { console.warn('Sincronizzazione iniziale non riuscita:', error.message); }
+}
+cloudReady = true;
 let view = state.onboarded ? (state.profileConfigured === false ? 'profile' : 'dashboard') : 'onboarding';
 let onboardingStep = 0;
 let deferredInstallPrompt = null;
@@ -82,7 +96,7 @@ const icons = {
   wallet: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5h15a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2h12v4M16 13h5"/></svg>'
 };
 
-function save(){ localStorage.setItem('rientro-state', JSON.stringify(state)); }
+function save(){ localStorage.setItem('rientro-state', JSON.stringify(state)); if(cloudReady)queueCloudWalletSave(state); }
 function toast(message){ const el=document.querySelector('#toast'); el.textContent=message; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2200); }
 function syncSpendingEntry(transaction){
   if(!state.spendingPeriods.length) state.spendingPeriods=[{label:'Periodo attuale',entries:[]}];
@@ -112,7 +126,7 @@ function dashboard(){
   const futureTimeline=timeline.filter(item=>item.status==='planned'&&item.day>=new Date().getDate()).slice(0,6);
   const routeProgress=pace.available?Math.max(5,Math.min(95,Math.round((30-Math.min(30,pace.daysRemaining))/30*100))):0;
   const todayLabel=new Intl.DateTimeFormat('it-IT',{weekday:'long',day:'numeric',month:'long'}).format(new Date());
-  return shell(`${header(todayLabel.charAt(0).toUpperCase()+todayLabel.slice(1),`Buongiorno, ${state.name}.`,`<div class="header-actions"><button class="button secondary" data-capital>Imposta capitale</button><button class="button secondary desktop-only" data-add>${icons.plus} Aggiungi</button></div>`)}
+  return shell(`${header(todayLabel.charAt(0).toUpperCase()+todayLabel.slice(1),`Buongiorno, ${state.name}.`,`<div class="header-actions"><button class="cloud-pill ${cloudUser()?'connected':''}" data-cloud-auth><i></i><span>${cloudUser()?'Sincronizzato':'Accedi'}</span></button><button class="button secondary" data-capital>Imposta capitale</button><button class="button secondary desktop-only" data-add>${icons.plus} Aggiungi</button></div>`)}
     ${!state.capitalConfigured?`<section class="capital-banner"><div><span class="eyebrow">Quando vuoi</span><h2>Inserisci quanto hai oggi</h2><p>È una fotografia del saldo attuale. Puoi indicare conto e contanti adesso oppure farlo più avanti.</p></div><button class="button" data-capital>Inserisci saldo</button></section>`:''}
     <section class="capital-hero reveal"><div><p class="eyebrow">Capitale disponibile</p><div class="capital-value">${state.capitalConfigured?money(capital):'Da impostare'}</div>${state.capitalConfigured?`<details class="forecast-disclosure"><summary>Apri previsione conto</summary><div class="capital-detail account-forecast"><div class="forecast-balances"><span>Conto oggi <b>${money(balances.account)}</b></span><span>Contanti oggi <b>${money(balances.cash)}</b></span></div>${forecast?`<div class="forecast-ledger"><p><span>Entrate prima dello stipendio</span><b>+ ${money(forecast.upcomingIncome)}</b></p><p><span>Spese programmate da pagare</span><b>− ${money(forecast.upcomingExpenses)}</b></p><p><span>Rate ancora da accantonare</span><b>− ${money(forecast.debtSetAside)}</b></p><p><span>Obiettivi ancora da accantonare</span><b>− ${money(forecast.savingSetAside)}</b></p></div><div class="forecast-result"><span>Prima delle spese quotidiane</span><strong>${money(forecast.totalBeforeDaily)}</strong><small>Se rispetti il ritmo indicato, al prossimo stipendio restano circa <b>${money(forecast.endComfort)}</b> di margine protetto.</small></div><p class="forecast-assumption">Il saldo è una fotografia del ${state.capitalAsOf?new Date(`${state.capitalAsOf}T12:00:00`).toLocaleDateString('it-IT',{day:'numeric',month:'long'}):'giorno in cui lo hai inserito'}: le scadenze precedenti sono già comprese. I contanti restano separati.</p>`:'<p class="forecast-assumption">Aggiungi il giorno dello stipendio per vedere la previsione completa.</p>'}</div></details>`:`<button class="text-button" data-capital>Inserisci il saldo reale</button>`}</div>
       <div class="calm-note"><span class="pulse"></span><p>${state.capitalConfigured&&state.incomes.length?`<strong>Il piano si adatta alla tua vita.</strong><br>La quota debiti di questo ciclo è ${money(activeDebt?.rate||0)}; dopo spese e quota restano ${money(activeDebt?.livingMoney||p.freeCash)} per vivere e gestire gli imprevisti.`:`<strong>Comincia con calma.</strong><br>Aggiungi saldo ed entrata quando vuoi: fino ad allora non mostriamo stime incomplete.`}</p></div></section>
@@ -178,7 +192,8 @@ function onboarding(){
 
 function profileSetup(){ app.innerHTML=`<div class="onboarding"><div class="onboarding-brand"><span class="brand-mark">R</span><span>Rientro</span></div><form id="profile-form"><span class="kicker">Primo avvio</span><h1>Nome e capitale reale</h1><p>I dati demo già presenti non verranno cancellati. Prima di entrare nella dashboard, sostituisci il nome e il saldo di esempio.</p><div class="form-fields"><label>Il tuo nome<input name="name" required maxlength="40" value="${state.name || ''}" autocomplete="given-name" placeholder="Es. Andrea"></label>${capitalFields()}</div><div class="form-actions"><button class="button" type="submit">Salva e continua</button></div></form><div class="privacy-note">Nessun collegamento bancario. I dati restano sul dispositivo.</div></div>`; }
 
-function settingsModal(){ return `<div class="modal-backdrop"><form class="modal settings-modal" id="settings-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Impostazioni</span><h2>Il tuo profilo</h2><label>Nome<input name="name" required maxlength="40" value="${state.name || ''}" autocomplete="given-name"></label><button class="button wide" type="submit">Salva nome</button><button class="text-button settings-capital" type="button" data-capital>Aggiorna capitale e ripartizione</button><section class="install-zone"><span class="eyebrow">Sul tuo telefono</span><p>Installa Rientro per aprirla dalla schermata Home, a tutto schermo e anche senza rete.</p><button class="button install-button" type="button" data-install-app>Installa Rientro</button></section><section class="reset-zone"><span class="eyebrow">Riparti da zero</span><p>Cancella capitale, movimenti, entrate, spese, debiti e obiettivi salvati su questo dispositivo.</p><button class="button reset-button" type="button" data-reset-all>Cancella tutti i dati</button></section></form></div>`; }
+function cloudAuthModal(){const user=cloudUser();return `<div class="modal-backdrop"><div class="modal cloud-modal"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Il tuo wallet, ovunque</span><h2>${user?'Account collegato':'Accedi a Rientro'}</h2>${user?`<div class="cloud-connected"><span class="cloud-check">✓</span><div><strong>${user.email}</strong><p>Le modifiche vengono salvate sul cloud e ritrovate sugli altri dispositivi.</p></div></div><button class="button secondary wide" type="button" data-cloud-signout>Esci da questo dispositivo</button>`:`<form id="cloud-auth-form"><p class="modal-copy">Usa la stessa email su ogni dispositivo. Al primo accesso trasferiremo il wallet attuale nel tuo account.</p><label>Email<input name="email" type="email" required autocomplete="email" placeholder="nome@email.it"></label><label>Password<input name="password" type="password" minlength="6" required autocomplete="current-password" placeholder="Almeno 6 caratteri"></label><p class="form-error" hidden></p><button class="button wide" type="button" data-cloud-login>Accedi</button><button class="button secondary wide cloud-register" type="button" data-cloud-signup>Crea il mio account</button></form>`}</div></div>`}
+function settingsModal(){ return `<div class="modal-backdrop"><form class="modal settings-modal" id="settings-form"><button class="close" type="button" data-close aria-label="Chiudi">×</button><span class="kicker">Impostazioni</span><h2>Il tuo profilo</h2><label>Nome<input name="name" required maxlength="40" value="${state.name || ''}" autocomplete="given-name"></label><button class="button wide" type="submit">Salva nome</button><button class="text-button settings-capital" type="button" data-capital>Aggiorna capitale e ripartizione</button><section class="cloud-zone"><span class="eyebrow">Sincronizzazione</span><p>${cloudUser()?`Collegato a <b>${cloudUser().email}</b>. Il wallet è disponibile sugli altri dispositivi.`:'Accedi per ritrovare lo stesso wallet su telefono, tablet e computer.'}</p><button class="button secondary" type="button" data-cloud-auth>${cloudUser()?'Gestisci account':'Accedi o crea account'}</button></section><section class="install-zone"><span class="eyebrow">Sul tuo telefono</span><p>Installa Rientro per aprirla dalla schermata Home, a tutto schermo e anche senza rete.</p><button class="button install-button" type="button" data-install-app>Installa Rientro</button></section><section class="reset-zone"><span class="eyebrow">Riparti da zero</span><p>Cancella capitale, movimenti, entrate, spese, debiti e obiettivi salvati su questo dispositivo.</p><button class="button reset-button" type="button" data-reset-all>Cancella tutti i dati</button></section></form></div>`; }
 
 function resetAllModal(){ return `<div class="modal-backdrop"><div class="modal confirm-modal reset-confirm" role="dialog" aria-modal="true" aria-labelledby="reset-title"><span class="kicker">Conferma richiesta</span><h2 id="reset-title">Vuoi davvero ripartire da zero?</h2><p>Verranno eliminati definitivamente tutti i dati inseriti in Rientro su questo dispositivo:</p><ul><li>capitale e movimenti</li><li>entrate e spese ricorrenti</li><li>debiti, obiettivi e piano di rientro</li></ul><p class="reset-note">Questa operazione non può essere annullata.</p><div class="confirm-actions"><button class="button ghost" data-close>Annulla</button><button class="button danger" data-confirm-reset>Elimina e ricomincia</button></div></div></div>`; }
 
@@ -231,7 +246,11 @@ function submitMovementForm(form){
  state.transactions=existing?state.transactions.map(x=>String(x.id)===id?transaction:x):[transaction,...state.transactions];syncSpendingEntry(transaction);save();form.closest('.modal-backdrop')?.remove();render();toast(existing?'Movimento aggiornato. Saldi ricalcolati.':'Movimento salvato. Saldi aggiornati.');return true;
 }
 
-document.addEventListener('click',e=>{
+document.addEventListener('click',async e=>{
+ const cloudAuth=e.target.closest('[data-cloud-auth]');if(cloudAuth){e.target.closest('.modal-backdrop')?.remove();document.body.insertAdjacentHTML('beforeend',cloudAuthModal());return}
+ const cloudLogin=e.target.closest('[data-cloud-login]');if(cloudLogin){e.preventDefault();submitCloudAuth(cloudLogin.form,'login');return}
+ const cloudSignup=e.target.closest('[data-cloud-signup]');if(cloudSignup){e.preventDefault();submitCloudAuth(cloudSignup.form,'signup');return}
+ if(e.target.closest('[data-cloud-signout]')){await signOutCloud();e.target.closest('.modal-backdrop')?.remove();render();toast('Disconnesso da questo dispositivo. I dati locali restano disponibili.');return}
  const saveMovement=e.target.closest('[data-save-movement]');if(saveMovement){e.preventDefault();submitMovementForm(saveMovement.form);return}
  const saveDebt=e.target.closest('[data-save-debt]');if(saveDebt){e.preventDefault();submitDebtForm(saveDebt.form);return}
  const saveRecurring=e.target.closest('[data-save-recurring]');if(saveRecurring){e.preventDefault();submitRecurringForm(saveRecurring.form);return}
@@ -268,6 +287,17 @@ document.addEventListener('click',e=>{
  if(e.target.closest('[data-back]')){onboardingStep--;render();}
  const choice=e.target.closest('[data-choose]');if(choice){const p=calculatePlan(state);state.targetMonths=choice.dataset.choose==='longer'?p.suggestedMonths:Math.ceil(p.debtTotal/Math.max(50,p.sustainable-60));state.mode='common';save();render();toast('Alternativa applicata al piano');}
 });
+
+async function submitCloudAuth(form, mode){
+ const email=String(form.email.value||'').trim(),password=String(form.password.value||''),errorEl=form.querySelector('.form-error');
+ if(!email||password.length<6){errorEl.textContent='Inserisci un’email valida e una password di almeno 6 caratteri.';errorEl.hidden=false;return}
+ form.querySelectorAll('button').forEach(button=>button.disabled=true);errorEl.hidden=true;
+ const result=mode==='signup'?await signUpCloud(email,password):await signInCloud(email,password);
+ if(!result.ok){errorEl.textContent=result.error;errorEl.hidden=false;form.querySelectorAll('button').forEach(button=>button.disabled=false);return}
+ if(result.needsConfirmation){errorEl.classList.add('success');errorEl.textContent='Controlla la tua email e conferma l’account, poi torna qui per accedere.';errorEl.hidden=false;form.querySelectorAll('button').forEach(button=>button.disabled=false);return}
+ try{const remoteWallet=await loadCloudWallet();if(remoteWallet){localStorage.setItem('rientro-local-backup',JSON.stringify(state));state={...freshState(),...remoteWallet};localStorage.setItem('rientro-state',JSON.stringify(state));}else await saveCloudWallet(state)}catch(error){errorEl.textContent='Accesso riuscito, ma la prima sincronizzazione non è completa. Riprova tra poco.';errorEl.hidden=false;return}
+ form.closest('.modal-backdrop')?.remove();render();toast(remoteWallet?'Wallet cloud caricato.':'Wallet trasferito nel tuo account.');
+}
 
 document.addEventListener('submit',e=>{
  e.preventDefault(); const fd=new FormData(e.target);
@@ -311,6 +341,8 @@ document.addEventListener('submit',e=>{
 function refreshSpendingChoice(value){state.dailySpendingTarget=Math.max(0,Number(value)||0);save();const pace=spendingPace(state),debt=selectedDebtPlan(state);document.querySelectorAll('[data-live-daily]').forEach(el=>el.textContent=money(pace.daily));document.querySelectorAll('[data-live-weekly]').forEach(el=>el.textContent=money(pace.weekly));document.querySelectorAll('[data-live-total]').forEach(el=>el.textContent=money(pace.plannedSpend));document.querySelectorAll('[data-live-remainder]').forEach(el=>el.textContent=money(pace.projectedRemainder));document.querySelectorAll('[data-live-debt]').forEach(el=>el.textContent=money(debt?.rate||0));const copy=document.querySelector('[data-live-choice-copy]');if(copy)copy.textContent='Hai scelto tu questa soglia. Rilascia il cursore per aggiornare tutto il piano.';const reset=document.querySelector('[data-reset-spending]');if(reset)reset.hidden=false}
 document.addEventListener('input',e=>{if(e.target.matches('[data-spending-slider]'))refreshSpendingChoice(e.target.value)});
 document.addEventListener('change',e=>{if(e.target.matches('[data-spending-slider]')){render();toast(`Nuovo ritmo: ${money(state.dailySpendingTarget)} al giorno.`);return}if(e.target.matches('#movement-form input[name="type"]')){const label=e.target.form.querySelector('[data-channel-account]');if(label)label.textContent=e.target.value==='income'?'Bonifico o accredito':'Bancomat o carta';e.target.form.classList.toggle('is-income',e.target.value==='income');}});
+
+window.addEventListener('rientro-cloud-status',event=>{const pill=document.querySelector('.cloud-pill');if(!pill)return;pill.classList.toggle('syncing',event.detail.status==='syncing');pill.classList.toggle('connected',event.detail.status==='synced');const label=pill.querySelector('span');if(label)label.textContent=event.detail.status==='syncing'?'Salvataggio…':event.detail.status==='error'?'Da sincronizzare':event.detail.status==='synced'?'Sincronizzato':'Accedi'});
 
 render();
 
