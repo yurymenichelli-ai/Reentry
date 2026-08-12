@@ -58,7 +58,16 @@ export function planScenarios(data, reference = new Date()) {
 
 export function selectedDebtPlan(data, reference = new Date()) {
   const scenarios = planScenarios(data,reference);
-  return scenarios.find(scenario => scenario.id === data.selectedPlanId) || scenarios.find(scenario => scenario.recommended) || scenarios[0];
+  const selected=scenarios.find(scenario => scenario.id === data.selectedPlanId) || scenarios.find(scenario => scenario.recommended) || scenarios[0];
+  const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>=0,chosenDaily=Number(data.dailySpendingTarget);
+  if(!hasChoice||!selected?.feasible||!calculatePlan(data).remainingDebt)return selected;
+  const incomes=data.incomes||[],mainIncome=incomes.slice().sort((a,b)=>/stipend|pension|salario/i.test(b.name||'')-/stipend|pension|salario/i.test(a.name||'')||monthlyAmount(b)-monthlyAmount(a))[0];
+  if(!mainIncome)return selected;
+  const payday=dateAtDay(reference,mainIncome.due),daysRemaining=Math.max(1,Math.ceil((payday-reference)/86400000));
+  const requestedSavings=rawAccumulationPlans(data).reduce((sum,item)=>sum+Math.ceil(Math.max(0,(Number(item.target)||0)-(Number(item.current)||0))/Math.max(1,Number(item.months)||12)),0);
+  const plan=calculatePlan(data),cycleAvailable=Math.max(0,(selected.rate||0)+(selected.livingMoney||0)),desiredLiving=Math.max(0,chosenDaily)*daysRemaining;
+  const adaptiveCapacity=Math.max(plan.minimumPayments,Math.floor(Math.max(0,cycleAvailable-requestedSavings-desiredLiving)/10)*10),rate=Math.min(plan.remainingDebt,adaptiveCapacity),months=rate?Math.ceil(plan.remainingDebt/rate):null;
+  return {...selected,rate,months,endDate:months?new Date(reference.getFullYear(),reference.getMonth()+months,1).toLocaleDateString('it-IT',{month:'long',year:'numeric'}):null,livingMoney:Math.max(0,cycleAvailable-requestedSavings-rate),customized:true,chosenDaily:Math.max(0,chosenDaily),breakdown:paymentBreakdown(plan,rate,months)};
 }
 
 function rawAccumulationPlans(data) {
@@ -225,9 +234,14 @@ export function spendingPace(data, reference = new Date()) {
   const beforeComfort = Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-debtSetAside-savingSetAside);
   const comfortMargin = Math.min(beforeComfort,Math.max(50,beforeComfort*.1));
   const spendable = Math.max(0,beforeComfort-comfortMargin);
-  const daily = Math.floor(spendable/daysRemaining);
+  const automaticDebtChoice=debtChoice?.customized?selectedDebtPlan({...data,dailySpendingTarget:null},reference):debtChoice;
+  const automaticDebtSetAside=Math.max(0,(plan.remainingDebt ? (automaticDebtChoice?.feasible ? automaticDebtChoice.rate : plan.minimumPayments) : 0)+plan.capitalForDebt-paidThisMonth('debt'));
+  const automaticBeforeComfort=Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-automaticDebtSetAside-savingSetAside),automaticComfort=Math.min(automaticBeforeComfort,Math.max(50,automaticBeforeComfort*.1)),maximumSpendable=Math.max(0,automaticBeforeComfort-automaticComfort),maximumDaily=Math.floor(maximumSpendable/daysRemaining);
+  const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>=0;
+  const daily=hasChoice?Math.min(maximumDaily,Math.max(0,Math.round(Number(data.dailySpendingTarget)))):Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
-  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses:allUpcomingExpenses, futureIncome, futureExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, daily, weekly };
+  const plannedSpend=daily*daysRemaining,projectedRemainder=Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-debtSetAside-savingSetAside-plannedSpend);
+  return { available:true, mainIncome, payday, estimatedPayday:!mainIncome.due, daysRemaining, liquidNow, upcomingIncome, upcomingExpenses:allUpcomingExpenses, futureIncome, futureExpenses, debtSetAside, savingSetAside, comfortMargin, spendable, maximumSpendable, maximumDaily, hasSpendingChoice:hasChoice, plannedSpend, projectedRemainder, daily, weekly };
 }
 
 export function accountForecast(data, reference = new Date()) {
