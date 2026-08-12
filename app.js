@@ -1,4 +1,4 @@
-import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=27';
+import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=28';
 import { commitDebt } from './debt-flow.js';
 import { commitRecurring } from './recurring-flow.js';
 import { commitCapital } from './capital-flow.js?v=25';
