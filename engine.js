@@ -59,7 +59,10 @@ export function planScenarios(data, reference = new Date()) {
 export function selectedDebtPlan(data, reference = new Date()) {
   const scenarios = planScenarios(data,reference);
   const selected=scenarios.find(scenario => scenario.id === data.selectedPlanId) || scenarios.find(scenario => scenario.recommended) || scenarios[0];
-  const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>=0,chosenDaily=Number(data.dailySpendingTarget);
+  // Zero is the result of a constrained budget, not a durable user preference.
+  // Keeping it persisted would pin the pace to zero even after a debt, goal or
+  // expense is removed and money becomes available again.
+  const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>0,chosenDaily=Number(data.dailySpendingTarget);
   if(!hasChoice||!selected?.feasible||!calculatePlan(data).remainingDebt)return selected;
   const incomes=data.incomes||[],mainIncome=incomes.slice().sort((a,b)=>/stipend|pension|salario/i.test(b.name||'')-/stipend|pension|salario/i.test(a.name||'')||monthlyAmount(b)-monthlyAmount(a))[0];
   if(!mainIncome)return selected;
@@ -238,7 +241,7 @@ export function spendingPace(data, reference = new Date()) {
   const automaticDebtSetAside=Math.max(0,(plan.remainingDebt ? (automaticDebtChoice?.feasible ? automaticDebtChoice.rate : plan.minimumPayments) : 0)+plan.capitalForDebt-paidThisMonth('debt'));
   const automaticBeforeComfort=Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-automaticDebtSetAside-savingSetAside),automaticComfort=Math.min(automaticBeforeComfort,Math.max(50,automaticBeforeComfort*.1)),automaticRawSpendable=Math.max(0,automaticBeforeComfort-automaticComfort);
   const cycleAvailable=Math.max(0,(automaticDebtChoice?.rate||0)+(automaticDebtChoice?.livingMoney||0)),maximumCycleLiving=Math.max(0,cycleAvailable-plan.minimumPayments-savingSetAside),maximumSpendable=Math.min(automaticRawSpendable,maximumCycleLiving),maximumDaily=Math.floor(maximumSpendable/daysRemaining);
-  const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>=0;
+  const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>0;
   const automaticLivingBudget=Math.max(0,(automaticDebtChoice?.livingMoney||0)-savingSetAside),recommendedSpendable=Math.min(automaticRawSpendable,automaticLivingBudget),spendable=hasChoice?Math.min(rawSpendable,Math.max(0,debtChoice?.livingMoney||0)):recommendedSpendable;
   const daily=hasChoice?Math.min(maximumDaily,Math.max(0,Math.round(Number(data.dailySpendingTarget)))):Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
