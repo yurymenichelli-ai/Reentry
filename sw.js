@@ -1,12 +1,12 @@
-const CACHE_NAME = 'rientro-shell-v76';
+const CACHE_NAME = 'rientro-shell-v77';
 const APP_SHELL = [
   './',
   './index.html',
   './office/bridge.js',
   './office/embed.css?v=1',
   './styles.css?v=33',
-  './app.js?v=54',
-  './editorial.css?v=46',
+  './app.js?v=55',
+  './editorial.css?v=47',
   './marea.css?v=25',
   './theme.js?v=33',
   './ui.js?v=46',

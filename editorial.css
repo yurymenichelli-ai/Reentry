@@ -825,6 +825,17 @@ input[type=range]:active::-webkit-slider-thumb {transform:scale(1.16);}
 .movement-filters {display:grid;grid-template-columns:repeat(3,1fr);gap:2px;padding:3px;background:var(--surface-secondary);border-radius:24px;margin:0 0 18px;}
 .movement-filters button {min-height:38px;border:0;border-radius:22px;color:var(--text-secondary);background:transparent;font-size:13px;transition:background-color 220ms ease,color 220ms ease,transform 300ms var(--ease-enter);}
 .movement-filters button[aria-pressed=true] {background:var(--accent-primary);color:var(--on-accent);}
+.movement-tools {display:flex;align-items:stretch;gap:10px;margin:-6px 0 10px;}
+.movement-date {flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border-subtle);border-radius:16px;background:var(--surface-primary);color:var(--accent-primary);}
+.movement-date>span:first-child {display:grid;place-items:center;width:26px;height:26px;flex:0 0 auto;}
+.movement-date>span:last-child {display:grid;gap:1px;min-width:0;width:100%;}
+.movement-date small {font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text-secondary);}
+.movement-date input {width:100%;min-width:0;border:0;padding:0;background:transparent;color:var(--text-primary);font:600 15px var(--font-body);color-scheme:light;}
+:root[data-theme='dark'] .movement-date input {color-scheme:dark;}
+.movement-date-clear {padding:0 8px;border:0;background:transparent;color:var(--accent-primary);font:600 13px var(--font-body);}
+.movement-day-summary {display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding:14px 2px 16px;border-bottom:1px solid var(--border-subtle);animation:apple-surface-in 360ms var(--ease-enter) both;}
+.movement-day-summary span {color:var(--text-secondary);font-size:14px;text-transform:capitalize;}
+.movement-day-summary strong {font-size:22px;letter-spacing:-.03em;color:var(--text-primary);white-space:nowrap;}
 @media(max-width:800px) {
  .shell:not(.view-dashboard) main {position:relative;}
  .shell:not(.view-dashboard) .mobile-masthead {position:absolute;top:20px;right:22px;margin:0;}

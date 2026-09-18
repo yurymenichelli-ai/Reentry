@@ -109,3 +109,17 @@ test('search and type filters combine without changing movement order or data', 
   query='';context.filterMovements();assert.equal(rows[1].hidden,false);assert.equal(empty.hidden,true);
   assert.equal(JSON.stringify(transactions),before);
 });
+
+test('calendar filter shows one day and calculates its expense total', () => {
+  const source=readFileSync(new URL('app.js',root),'utf8');
+  const start=source.indexOf('function filterMovements(){');
+  const end=source.indexOf("document.addEventListener('click',event=>",start);
+  const transactions=[{label:'Caffè',type:'expense',amount:2.5,recordedAt:'2026-09-18'},{label:'Spesa',type:'expense',amount:24.8,recordedAt:'2026-09-18'},{label:'Rimborso',type:'income',amount:48,recordedAt:'2026-09-17'}];
+  const rows=[{},{},{}],empty={hidden:true},summary={hidden:true},clear={hidden:true},label={},total={};
+  const context=vm.createContext({state:{transactions},ledgerMoney:value=>`${Number(value).toFixed(2)} €`,document:{
+    querySelector(selector){if(selector==='[data-movement-search]')return {value:''};if(selector==='[data-movement-date]')return {value:'2026-09-18'};if(selector==='[data-movement-day-summary]')return summary;if(selector==='[data-clear-movement-date]')return clear;if(selector==='[data-movement-day-label]')return label;if(selector==='[data-movement-day-total]')return total;if(selector==='.search-empty')return empty;return {dataset:{movementFilter:'all'}};},
+    querySelectorAll(){return rows;}
+  }});
+  vm.runInContext(source.slice(start,end),context);context.filterMovements();
+  assert.deepEqual(rows.map(row=>row.hidden),[false,false,true]);assert.equal(summary.hidden,false);assert.equal(clear.hidden,false);assert.match(label.textContent,/18 settembre/);assert.equal(total.textContent,'27.30 €');
+});
