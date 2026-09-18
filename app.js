@@ -1,5 +1,5 @@
 import { revealPage, settleFigure, closeDialog } from './motion.js?v=45';
-import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=29';
+import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine.js?v=30';
 import { commitDebt } from './debt-flow.js';
 import { commitRecurring } from './recurring-flow.js';
 import { commitCapital } from './capital-flow.js?v=25';

@@ -1,11 +1,11 @@
-const CACHE_NAME = 'rientro-shell-v73';
+const CACHE_NAME = 'rientro-shell-v74';
 const APP_SHELL = [
   './',
   './index.html',
   './office/bridge.js',
   './office/embed.css?v=1',
   './styles.css?v=33',
-  './app.js?v=51',
+  './app.js?v=52',
   './editorial.css?v=46',
   './marea.css?v=25',
   './theme.js?v=33',
@@ -35,7 +35,7 @@ const APP_SHELL = [
   './assets/notturno-materico.jpg',
   './debt-flow.js',
   './recurring-flow.js',
-  './engine.js?v=29',
+  './engine.js?v=30',
   './cloud.js?v=40',
   './capital-flow.js?v=25',
   './manifest.webmanifest',

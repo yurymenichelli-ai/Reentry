@@ -240,9 +240,12 @@ export function spendingPace(data, reference = new Date()) {
   const automaticDebtChoice=debtChoice?.customized?selectedDebtPlan({...data,dailySpendingTarget:null},reference):debtChoice;
   const automaticDebtSetAside=Math.max(0,(plan.remainingDebt ? (automaticDebtChoice?.feasible ? automaticDebtChoice.rate : plan.minimumPayments) : 0)+plan.capitalForDebt-paidThisMonth('debt'));
   const automaticBeforeComfort=Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-automaticDebtSetAside-savingSetAside),automaticComfort=Math.min(automaticBeforeComfort,Math.max(50,automaticBeforeComfort*.1)),automaticRawSpendable=Math.max(0,automaticBeforeComfort-automaticComfort);
-  const cycleAvailable=Math.max(0,(automaticDebtChoice?.rate||0)+(automaticDebtChoice?.livingMoney||0)),maximumCycleLiving=Math.max(0,cycleAvailable-plan.minimumPayments-savingSetAside),maximumSpendable=Math.min(automaticRawSpendable,maximumCycleLiving),maximumDaily=Math.floor(maximumSpendable/daysRemaining);
+  const cycleAvailable=Math.max(0,(automaticDebtChoice?.rate||0)+(automaticDebtChoice?.livingMoney||0));
+  const maximumCycleLiving=plan.remainingDebt?Math.max(0,cycleAvailable-plan.minimumPayments-savingSetAside):automaticRawSpendable;
+  const maximumSpendable=Math.min(automaticRawSpendable,maximumCycleLiving),maximumDaily=Math.floor(maximumSpendable/daysRemaining);
   const hasChoice=data.dailySpendingTarget!==null&&data.dailySpendingTarget!==undefined&&Number.isFinite(Number(data.dailySpendingTarget))&&Number(data.dailySpendingTarget)>0;
-  const automaticLivingBudget=Math.max(0,(automaticDebtChoice?.livingMoney||0)-savingSetAside),recommendedSpendable=Math.min(automaticRawSpendable,automaticLivingBudget),spendable=hasChoice?Math.min(rawSpendable,Math.max(0,debtChoice?.livingMoney||0)):recommendedSpendable;
+  const automaticLivingBudget=plan.remainingDebt?Math.max(0,(automaticDebtChoice?.livingMoney||0)-savingSetAside):automaticRawSpendable;
+  const recommendedSpendable=Math.min(automaticRawSpendable,automaticLivingBudget),spendable=hasChoice?Math.min(rawSpendable,plan.remainingDebt?Math.max(0,debtChoice?.livingMoney||0):rawSpendable):recommendedSpendable;
   const daily=hasChoice?Math.min(maximumDaily,Math.max(0,Math.round(Number(data.dailySpendingTarget)))):Math.floor(spendable/daysRemaining);
   const weekly = Math.floor(daily*Math.min(7,daysRemaining));
   const plannedSpend=daily*daysRemaining,projectedRemainder=Math.max(0,liquidNow+upcomingIncome-allUpcomingExpenses-debtSetAside-savingSetAside-plannedSpend);
