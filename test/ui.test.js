@@ -1,0 +1,111 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+import vm from 'node:vm';
+
+const root = new URL('../', import.meta.url);
+
+test('un campo nascosto id non impedisce il salvataggio di un obiettivo', () => {
+  const source = readFileSync(new URL('app.js', root), 'utf8');
+  const start = source.indexOf("document.addEventListener('submit'");
+  const end = source.indexOf("document.addEventListener('input'", start);
+  let submit, saved = 0, rendered = 0, closed = 0;
+  const state = { accumulationPlans: [] };
+  const context = {
+    document: { addEventListener(type, handler) { if (type === 'submit') submit = handler; } },
+    FormData: class { constructor(form) { this.values = form.values; } get(name) { return this.values[name] ?? null; } },
+    state, save() { saved++; }, render() { rendered++; }, toast() {},
+  };
+  vm.runInNewContext(source.slice(start, end), context);
+  const form = {
+    // HTMLFormElement named properties can shadow the form's DOM id.
+    id: { value: '' },
+    getAttribute(name) { return name === 'id' ? 'accumulation-form' : null; },
+    values: { id: '', name: 'Viaggio', target: '1200', months: '12', priority: '1' },
+    closest() { return { remove() { closed++; } }; },
+  };
+  submit({ target: form, preventDefault() {} });
+  assert.equal(state.accumulationPlans.length, 1);
+  assert.equal(state.accumulationPlans[0].name, 'Viaggio');
+  assert.equal(state.accumulationPlans[0].target, 1200);
+  assert.equal(state.accumulationPlans[0].months, 12);
+  assert.equal(saved, 1);
+  assert.equal(rendered, 1);
+  assert.equal(closed, 1);
+});
+
+function loadTheme(stored, systemDark = false, storageBlocked = false) {
+  const media = { matches: systemDark, addEventListener(_type, listener) { this.changed = listener; } };
+  const html = { dataset: {}, style: {} };
+  let storedValue = stored;
+  const window = {};
+  vm.runInNewContext(readFileSync(new URL('theme.js', root), 'utf8'), {
+    window, matchMedia: () => media,
+    localStorage: {
+      getItem() { if (storageBlocked) throw new Error('blocked'); return storedValue; },
+      setItem(_key, value) { if (storageBlocked) throw new Error('blocked'); storedValue = value; },
+    },
+    document: { documentElement: html, querySelector: () => null, querySelectorAll: () => [] },
+  });
+  return { html, media, theme: window.rientroTheme, stored: () => storedValue };
+}
+
+test('il tema esplicito prevale sul sistema ed è persistito', () => {
+  const { html, media, theme, stored } = loadTheme('light', true);
+  assert.equal(html.dataset.theme, 'light');
+  theme.set('dark');
+  assert.equal(html.dataset.theme, 'dark');
+  assert.equal(stored(), 'dark');
+  media.matches = false; media.changed();
+  assert.equal(html.dataset.theme, 'dark');
+});
+
+test('Sistema segue il dispositivo e un valore non valido torna a Sistema', () => {
+  const { html, media, theme } = loadTheme('invalid', true);
+  assert.equal(theme.get(), 'system');
+  assert.equal(html.dataset.theme, 'dark');
+  media.matches = false; media.changed();
+  assert.equal(html.dataset.theme, 'light');
+  theme.set('invalid');
+  assert.equal(theme.get(), 'system');
+});
+
+test('il tema funziona anche quando lo storage non è disponibile', () => {
+  const { theme, html } = loadTheme(null, false, true);
+  assert.doesNotThrow(() => theme.set('dark'));
+  assert.equal(html.dataset.theme, 'dark');
+});
+
+test('la cache offline include risorse esistenti senza richieste duplicate', async () => {
+  let install, pending, assets;
+  vm.runInNewContext(readFileSync(new URL('sw.js', root), 'utf8'), {
+    self: { addEventListener(name, handler) { if (name === 'install') install = handler; }, skipWaiting() {} },
+    caches: { async open() { return { async addAll(paths) { assets = paths; } }; } },
+  });
+  install({ waitUntil(promise) { pending = promise; } });
+  await pending;
+  assert.equal(new Set(assets).size, assets.length);
+  for (const asset of assets) assert.ok(existsSync(new URL(asset.split('?')[0], root)), `Missing offline asset: ${asset}`);
+  const html = readFileSync(new URL('index.html', root), 'utf8');
+  const scripts = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map(match => match[1]);
+  assert.equal(new Set(scripts).size, scripts.length);
+  for (const script of scripts) assert.ok(assets.includes(`./${script}`), `Script not cached: ${script}`);
+});
+
+test('search and type filters combine without changing movement order or data', () => {
+  const source=readFileSync(new URL('app.js',root),'utf8');
+  const start=source.indexOf('function filterMovements(){');
+  const end=source.indexOf("document.addEventListener('click',event=>",start);
+  let type='expense',query='caff';
+  const transactions=[{label:'Caffè',type:'expense',amount:2.5},{label:'Rimborso',type:'income',amount:48}];
+  const before=JSON.stringify(transactions),rows=[{},{}],empty={hidden:true};
+  const context=vm.createContext({state:{transactions},document:{
+    querySelector(selector){if(selector==='[data-movement-search]')return {value:query};if(selector==='.search-empty')return empty;return {dataset:{movementFilter:type}};},
+    querySelectorAll(){return rows;}
+  }});
+  vm.runInContext(source.slice(start,end),context);
+  context.filterMovements();assert.equal(rows[0].hidden,false);assert.equal(rows[1].hidden,true);
+  type='income';context.filterMovements();assert.equal(rows[0].hidden,true);assert.equal(empty.hidden,false);
+  query='';context.filterMovements();assert.equal(rows[1].hidden,false);assert.equal(empty.hidden,true);
+  assert.equal(JSON.stringify(transactions),before);
+});

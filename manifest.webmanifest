@@ -9,8 +9,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f2f4f3",
-  "theme_color": "#193b43",
+  "background_color": "#f3f0e7",
+  "theme_color": "#194d50",
   "categories": ["finance", "productivity", "utilities"],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -18,6 +18,6 @@
     { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Apri la dashboard", "short_name": "Oggi", "url": "./?source=shortcut" }
+    { "name": "Apri la dashboard", "short_name": "Home", "url": "./?source=shortcut" }
   ]
 }

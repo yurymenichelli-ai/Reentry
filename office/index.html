@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101b19"><meta name="description" content="Il tuo ufficio Rientro. Uno spazio personale per dare ordine a piani, spese e obiettivi.">
+<title>Rientro — Il tuo ufficio</title>
+<link rel="icon" href="../icons/icon-192.png"><link rel="preload" as="image" href="assets/threshold.jpg">
+<link rel="stylesheet" href="office.css?v=1"><script src="../theme.js?v=33"></script>
+</head>
+<body data-stage="threshold">
+<div id="scene" aria-hidden="true"></div><div class="film-grain" aria-hidden="true"></div><div class="shade" aria-hidden="true"></div>
+<header class="masthead"><a href="../" class="wordmark" aria-label="Rientro, apri l’app classica">Rientro<span>IL TUO UFFICIO PERSONALE</span></a><div class="top-actions"><button id="motion" aria-pressed="false" aria-label="Riduci i movimenti della camera">Movimento <span>cinema</span></button><button id="sound" aria-pressed="false" aria-label="Attiva suoni ambientali">Audio <span>off</span></button><a href="../">App classica ↗</a></div></header>
+<main id="threshold" class="threshold">
+ <div class="chapter"><span class="chapter-line"></span>01 / SULLA SOGLIA</div>
+ <h1>Fuori, il rumore.<br>Dentro, <em>il controllo.</em></h1>
+ <p class="intro">I tuoi numeri hanno un posto.<br>La chiave ce l’hai tu.</p>
+ <form id="login" class="login-form">
+ <label for="email">La tua email<input id="email" name="email" type="email" autocomplete="email" required placeholder="nome@email.it"></label>
+ <label for="password">Password<span class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" minlength="6" required placeholder="La tua password"><button id="show-password" type="button" aria-label="Mostra password" aria-pressed="false">Mostra</button></span></label>
+ <p id="auth-error" role="alert" hidden></p>
+ <button class="enter" id="enter" type="submit" disabled><span>Controllo la chiave…</span><b aria-hidden="true">↗</b></button>
+ <button id="register" class="register" type="button">È la prima volta? Crea un account</button>
+ </form>
+ <div id="returning" hidden><p>Il tuo account è già collegato.</p><button id="return-enter" class="enter">Entra nel tuo ufficio <b aria-hidden="true">↗</b></button></div>
+ <p class="privacy">I tuoi dati restano dietro questa porta.</p>
+</main>
+<div id="threshold-note" class="threshold-note" aria-hidden="true"><span>R / 01</span><p>Un posto per<br>riprendere le redini.</p><i></i></div>
+<div class="threshold-footer"><span>PIANIFICA. VIVI. RESPIRA.</span><span>IL TUO SPAZIO, CON CALMA.</span></div>
+<section id="office-ui" hidden aria-label="Esplora il tuo ufficio">
+ <div class="room-heading"><span id="room-chapter">02 / DENTRO IL TUO UFFICIO</span><h2>Ogni cosa,<br><em>al suo posto.</em></h2><p>Scegli un oggetto. Il resto si mette a fuoco.</p></div>
+ <div id="hotspots" aria-label="Oggetti interattivi"></div>
+ <footer class="room-footer"><button id="overview" class="back-room">↖ Vista d’insieme</button><div id="station-nav" class="station-nav" aria-label="Navigazione rapida"></div><button id="signout" class="signout">Esci ↗</button></footer>
+</section>
+<div id="cut" class="cut" aria-hidden="true"><span>Rientro</span></div>
+<button id="skip" class="skip" hidden>Salta l’ingresso →</button>
+<dialog id="workspace" aria-labelledby="workspace-title"><header><div><span id="workspace-kicker">SULLA SCRIVANIA</span><h2 id="workspace-title">Il tuo piano</h2></div><div><a id="full-app" href="../">Apri nell’app ↗</a><button id="close-workspace" aria-label="Chiudi e torna nell’ufficio">Chiudi <span aria-hidden="true">×</span></button></div></header><p id="frame-status" role="status">Apro il tuo spazio…</p><iframe id="app-frame" title="Rientro: i tuoi dati e le tue operazioni" hidden></iframe></dialog>
+<div id="status" class="status" role="status" aria-live="polite"></div>
+<noscript><div class="no-script">Per esplorare l’ufficio serve JavaScript. <a href="../">Apri Rientro</a>.</div></noscript>
+<script type="module" src="office.js?v=2"></script>
+</body></html>

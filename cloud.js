@@ -9,8 +9,13 @@ function announce(status, message = '') {
 export async function initializeCloud() {
   try {
     const response = await fetch('/api/supabase-config', { cache: 'no-store' });
-    if (!response.ok) return { available: false, user: null };
-    const config = await response.json();
+    let config;
+    if (response.ok) config = await response.json();
+    else if (/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)) config = {
+      url: 'https://jlymjhjmxyvsqqviqamm.supabase.co',
+      publishableKey: 'sb_publishable_Kpp233zYthuhGZst6_OnzQ_Zrh2_5wT'
+    };
+    else return { available: false, user: null };
     if (!config.url || !config.publishableKey) return { available: false, user: null };
     const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
     client = createClient(config.url, config.publishableKey, {

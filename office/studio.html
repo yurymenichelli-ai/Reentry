@@ -1,0 +1,9 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#17201c"><title>Rientro — Studio 3D</title><link rel="icon" href="../icons/icon-192.png"><link rel="stylesheet" href="studio.css?v=1"></head><body>
+<main id="stage" aria-label="Ufficio tridimensionale. L’agenda si apre sulla scrivania."></main>
+<header><a href="./">Rientro<span>STUDIO / ANTEPRIMA 3D</span></a><button id="motion" aria-pressed="false">Movimento ridotto</button></header>
+<div id="intro"><span>UN MOMENTO PER TE.</span><h1>Metti a fuoco.</h1><p>La tua agenda è sulla scrivania.<br>Toccala. Si apre proprio lì.</p></div>
+<button id="agenda-target" disabled aria-label="Apri l’agenda sulla scrivania"><span></span>Apri l’agenda</button>
+<footer><div><span id="data-label">Caricamento dello studio…</span><p id="hint" role="status">Preparo luce e materiali.</p></div><nav aria-label="Comandi dell’agenda"><button id="prev" hidden aria-label="Sfoglia indietro">←</button><button id="next" hidden aria-label="Sfoglia avanti">Sfoglia →</button><button id="write" hidden>Scrivi una nota</button><button id="close" hidden>Chiudi l’agenda</button><button id="wide" hidden>Guarda l’ufficio</button></nav></footer>
+<textarea id="note-input" aria-label="Scrivi sulla pagina dell’agenda" maxlength="600" tabindex="-1"></textarea><p id="accessible-page" class="sr-only" aria-live="polite"></p>
+<div id="loading"><span>R / STUDIO</span><p>La luce entra.<br>Il resto può aspettare.</p><small>Preparo la scena tridimensionale…</small></div>
+<script type="module" src="studio.js?v=1"></script></body></html>

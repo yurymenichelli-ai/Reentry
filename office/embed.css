@@ -1,0 +1,13 @@
+.office-embedded .sidebar,.office-embedded .mobile-masthead{display:none}
+.office-embedded .shell main{padding-top:24px}
+.office-embedded .view-dashboard main{display:block;max-width:850px}
+.office-embedded .view-dashboard .architecture-scene,.office-embedded .home-mantra{display:none}
+.office-embedded .view-dashboard .page-header{padding:0;min-height:0;margin-bottom:24px}
+.office-embedded .view-dashboard .page-header h1{font-size:32px;max-width:none}
+.office-embedded .financial-board{margin:0;padding:24px;border-radius:0}
+.office-embedded .view-dashboard .month-roadmap{padding-top:24px}
+.office-embedded .view-dashboard .next-income{margin-top:24px}
+.office-embedded .view-plan .saving-plans::after{display:none}
+.office-embedded .view-dashboard .header-actions .cloud-pill{display:none}
+.office-embedded .view-dashboard .page-header::after{display:none}
+@media(min-width:801px){.office-embedded .shell main{padding-bottom:32px}.office-embedded .view-dashboard .header-actions{display:flex}}
