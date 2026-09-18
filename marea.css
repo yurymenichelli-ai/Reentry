@@ -404,6 +404,8 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
     top:64px;
     background-size:contain;
   }
+  .view-plan .page-header::before {left:92px;right:auto;}
+  .view-plan .page-header>div:first-child {max-width:88px;}
   :is(.view-plan,.view-transactions,.view-analysis) .page-header::after {
     content:'';
     display:block;
@@ -494,4 +496,48 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {width:98px;height:102px;top:50px;}
   .movement-value>b,.roadmap-amount {font-size:17px!important;}
   .plan-summary>div:first-child>strong {font-size:43px!important;}
+}
+
+/* Characters sit beside the content; they no longer reserve an empty band. */
+@media(max-width:800px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {
+    display:flex;
+    align-items:flex-start;
+    min-height:112px;
+    margin-bottom:14px;
+    padding-bottom:14px;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>div:first-child {
+    max-width:calc(100% - 102px);
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>.button,
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>.header-actions {
+    margin-left:auto;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {
+    width:86px;
+    height:94px;
+    top:20px;
+    right:8px;
+  }
+
+  .saving-plans {padding-top:82px;}
+  .saving-plans::before {width:104px;height:82px;left:8px;right:auto;top:0;transform:none;}
+  .saving-plans>.section-head {min-height:72px;padding-left:112px;}
+
+  .settings-modal {padding-top:112px!important;}
+  .settings-modal::after {width:80px;height:88px;top:18px;right:calc(50% - 40px);}
+
+  .login-scene h2 {min-height:90px;padding-right:92px;}
+  .login-scene h2::after {width:76px;height:88px;right:6px;bottom:0;}
+}
+
+@media(max-width:380px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {min-height:104px;}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {width:76px;height:84px;top:18px;}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>div:first-child {max-width:calc(100% - 88px);}
+  .saving-plans {padding-top:74px;}
+  .view-plan .page-header>div:first-child {max-width:80px;}
+  .view-plan .page-header::before {left:78px;}
+  .saving-plans>.section-head {padding-left:96px;}
 }
