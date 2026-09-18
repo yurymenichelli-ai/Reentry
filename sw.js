@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rientro-shell-v71';
+const CACHE_NAME = 'rientro-shell-v72';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,7 +7,7 @@ const APP_SHELL = [
   './styles.css?v=33',
   './app.js?v=50',
   './editorial.css?v=46',
-  './marea.css?v=23',
+  './marea.css?v=24',
   './theme.js?v=33',
   './ui.js?v=46',
   './motion.js?v=45',

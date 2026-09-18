@@ -548,6 +548,68 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   .plan-summary>div:first-child>strong {font-size:43px!important;}
 }
 
+/* Final header composition. Keep this last: it replaces every earlier
+   experimental character layout and guarantees the wide scenes are visible. */
+@media(max-width:800px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {
+    position:relative!important;
+    display:flex!important;
+    min-height:116px!important;
+    margin-bottom:14px!important;
+    padding:0 0 12px!important;
+    align-items:flex-start!important;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {
+    content:''!important;
+    display:block!important;
+    width:238px!important;
+    height:108px!important;
+    left:auto!important;
+    right:0!important;
+    top:4px!important;
+    background-image:var(--lumi-character)!important;
+    background-position:center!important;
+    background-size:contain!important;
+    background-repeat:no-repeat!important;
+    -webkit-mask-image:none!important;
+    mask-image:none!important;
+    opacity:1!important;
+  }
+  :is(.view-transactions,.view-analysis) .page-header>div:first-child {max-width:150px!important;}
+  .view-plan .page-header::before {width:205px!important;height:100px!important;left:104px!important;right:auto!important;}
+  .view-plan .page-header>div:first-child {max-width:88px!important;}
+  .view-plan .page-header>.button {position:absolute!important;right:0!important;top:0!important;max-width:165px!important;}
+
+  .saving-plans {padding-top:112px!important;}
+  .saving-plans::before {
+    content:''!important;
+    display:block!important;
+    width:270px!important;
+    height:104px!important;
+    left:50%!important;
+    right:auto!important;
+    top:0!important;
+    transform:translateX(-50%)!important;
+    background-position:center!important;
+    background-size:contain!important;
+    background-repeat:no-repeat!important;
+    -webkit-mask-image:none!important;
+    mask-image:none!important;
+    opacity:1!important;
+  }
+  .saving-plans>.section-head {min-height:0!important;padding:0!important;}
+}
+
+@media(max-width:420px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {min-height:106px!important;}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {width:196px!important;height:96px!important;}
+  .view-plan .page-header::before {width:146px!important;height:88px!important;left:76px!important;}
+  .view-plan .page-header>.button {max-width:140px!important;padding-inline:10px!important;font-size:11px!important;}
+  .view-plan .page-header>div:first-child {max-width:70px!important;}
+  .saving-plans {padding-top:102px!important;}
+  .saving-plans::before {width:238px!important;height:94px!important;}
+}
+
 /* Operational screens stay dense. Decorative figures are removed where they
    force empty header bands; content starts immediately below the title. */
 @media(max-width:800px) {
@@ -616,4 +678,26 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   .view-plan .page-header>div:first-child {max-width:80px;}
   .view-plan .page-header::before {left:78px;}
   .saving-plans>.section-head {padding-left:96px;}
+}
+
+/* Definitive wide-character override — intentionally the final cascade layer. */
+@media(max-width:800px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header{position:relative!important;display:flex!important;min-height:116px!important;margin-bottom:14px!important;padding:0 0 12px!important;align-items:flex-start!important}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before{content:''!important;display:block!important;width:238px!important;height:108px!important;left:auto!important;right:0!important;top:4px!important;background-image:var(--lumi-character)!important;background-position:center!important;background-size:contain!important;background-repeat:no-repeat!important;-webkit-mask-image:none!important;mask-image:none!important;opacity:1!important}
+  :is(.view-transactions,.view-analysis) .page-header>div:first-child{max-width:150px!important}
+  .view-plan .page-header::before{width:205px!important;height:100px!important;left:104px!important;right:auto!important}
+  .view-plan .page-header>div:first-child{max-width:88px!important}
+  .view-plan .page-header>.button{position:absolute!important;right:0!important;top:0!important;max-width:165px!important}
+  .saving-plans{padding-top:112px!important}
+  .saving-plans::before{content:''!important;display:block!important;width:270px!important;height:104px!important;left:50%!important;right:auto!important;top:0!important;transform:translateX(-50%)!important;background-position:center!important;background-size:contain!important;background-repeat:no-repeat!important;-webkit-mask-image:none!important;mask-image:none!important;opacity:1!important}
+  .saving-plans>.section-head{min-height:0!important;padding:0!important}
+}
+@media(max-width:420px){
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header{min-height:106px!important}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before{width:196px!important;height:96px!important}
+  .view-plan .page-header::before{width:146px!important;height:88px!important;left:76px!important}
+  .view-plan .page-header>.button{max-width:140px!important;padding-inline:10px!important;font-size:11px!important}
+  .view-plan .page-header>div:first-child{max-width:70px!important}
+  .saving-plans{padding-top:102px!important}
+  .saving-plans::before{width:238px!important;height:94px!important}
 }
