@@ -283,12 +283,12 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
 
 /* Lumi characters live only on the app's flat editorial surface. Each asset
    has the exact theme background and carries its message on a physical prop. */
-.view-plan {--lumi-character:url('assets/lumi/piano-light.png?v=4');}
-.view-transactions {--lumi-character:url('assets/lumi/movimenti-light.png?v=4');}
-.view-analysis {--lumi-character:url('assets/lumi/analisi-light.png?v=4');}
-:root[data-theme='dark'] .view-plan {--lumi-character:url('assets/lumi/piano-dark.png?v=4');}
-:root[data-theme='dark'] .view-transactions {--lumi-character:url('assets/lumi/movimenti-dark.png?v=4');}
-:root[data-theme='dark'] .view-analysis {--lumi-character:url('assets/lumi/analisi-dark.png?v=4');}
+.view-plan {--lumi-character:url('assets/lumi/piano-light.png?v=6');}
+.view-transactions {--lumi-character:url('assets/lumi/movimenti-light.png?v=6');}
+.view-analysis {--lumi-character:url('assets/lumi/analisi-light.png?v=6');}
+:root[data-theme='dark'] .view-plan {--lumi-character:url('assets/lumi/piano-dark.png?v=6');}
+:root[data-theme='dark'] .view-transactions {--lumi-character:url('assets/lumi/movimenti-dark.png?v=6');}
+:root[data-theme='dark'] .view-analysis {--lumi-character:url('assets/lumi/analisi-dark.png?v=6');}
 :is(.view-plan,.view-transactions,.view-analysis) .page-header {isolation:isolate;}
 :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {
   content:'';
@@ -315,12 +315,12 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   position:absolute;
   z-index:-1;
   width:190px;height:160px;right:0;top:12px;
-  background:url('assets/lumi/obiettivi-light.png?v=4') center/contain no-repeat;
+  background:url('assets/lumi/obiettivi-light.png?v=6') center/contain no-repeat;
   opacity:1;
   -webkit-mask-image:linear-gradient(to bottom,#000 0 78%,transparent 100%);
   mask-image:linear-gradient(to bottom,#000 0 78%,transparent 100%);
 }
-:root[data-theme='dark'] .saving-plans::before {background-image:url('assets/lumi/obiettivi-dark.png?v=4');}
+:root[data-theme='dark'] .saving-plans::before {background-image:url('assets/lumi/obiettivi-dark.png?v=6');}
 .saving-plans {padding-top:180px;}
 .saving-plans>.section-head {position:relative;z-index:1;}
 .settings-modal {isolation:isolate;}
@@ -448,6 +448,56 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   .goal-section>div {align-items:stretch;}
   .goal-actions {display:grid;grid-template-columns:1fr;justify-items:stretch;width:100%;}
   .goal-actions .button,.goal-actions .text-button {width:100%;max-width:none;min-height:48px;text-align:center;justify-content:center;}
+}
+
+/* Wide Lumi scenes fill the header field instead of floating as small icons. */
+@media(max-width:800px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {
+    position:relative;
+    display:flex;
+    min-height:116px;
+    margin-bottom:14px;
+    padding-bottom:12px;
+    align-items:flex-start;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {
+    display:block;
+    width:238px;
+    height:108px;
+    right:0;
+    top:4px;
+    background-size:contain;
+    -webkit-mask-image:none;
+    mask-image:none;
+  }
+  :is(.view-transactions,.view-analysis) .page-header>div:first-child {max-width:155px;}
+  .view-plan .page-header::before {width:210px;height:100px;left:112px;right:auto;top:4px;}
+  .view-plan .page-header>div:first-child {max-width:92px;}
+  .view-plan .page-header>.button {position:absolute;right:0;top:0;max-width:170px;}
+
+  .saving-plans {padding-top:112px;}
+  .saving-plans::before {
+    display:block;
+    width:270px;
+    height:104px;
+    left:50%;
+    right:auto;
+    top:0;
+    transform:translateX(-50%);
+    -webkit-mask-image:none;
+    mask-image:none;
+  }
+  .saving-plans>.section-head {min-height:0;padding:0;}
+}
+
+@media(max-width:420px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {min-height:106px;}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {width:196px;height:96px;}
+  .view-plan .page-header::before {width:150px;height:88px;left:78px;}
+  .view-plan .page-header>.button {max-width:142px;padding-inline:10px;font-size:11px;}
+  .view-plan .page-header>div:first-child {max-width:72px;}
+  .saving-plans {padding-top:102px;}
+  .saving-plans::before {width:238px;height:94px;}
 }
 
 /* Density and numeric hierarchy. Decorative space stays secondary to the
