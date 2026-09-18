@@ -447,3 +447,51 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   .goal-actions {display:grid;grid-template-columns:1fr;justify-items:stretch;width:100%;}
   .goal-actions .button,.goal-actions .text-button {width:100%;max-width:none;min-height:48px;text-align:center;justify-content:center;}
 }
+
+/* Density and numeric hierarchy. Decorative space stays secondary to the
+   financial information, and every amount remains readable at phone size. */
+@media(max-width:800px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {
+    grid-template-rows:auto 112px;
+    min-height:170px;
+    margin-bottom:18px;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {
+    width:112px;
+    height:116px;
+    top:50px;
+    right:12px;
+  }
+  .saving-plans {padding-top:122px;}
+  .saving-plans::before {width:138px;height:118px;top:0;}
+  .settings-modal {padding-top:148px!important;}
+  .settings-modal::after {width:105px;height:116px;top:24px;right:calc(50% - 52px);}
+
+  .movement-value>b,.roadmap-amount {font-size:18px!important;line-height:1.15;}
+  .plan-summary>div:first-child>strong {font-size:48px!important;line-height:1;}
+  .plan-formula {font-size:14px!important;line-height:1.45;}
+  .plan-formula strong {font-size:16px;line-height:1.35;}
+  .scenario>strong {font-size:34px!important;line-height:1.05;}
+  .debt-title>b,.saving-section .progress-copy b {font-size:17px;font-variant-numeric:tabular-nums;}
+  .goal-section h2,.advance-control h2,.saving-section h2 {font-size:27px;line-height:1.08;}
+  .analysis-hero>div>strong,.spendable-total {font-size:50px!important;line-height:1;}
+  .analysis-hero .comparison strong {font-size:28px!important;}
+  .distribution-ring strong {font-size:38px!important;}
+  .expense-types strong,.forecast-result strong {font-size:20px;}
+  .spending-preview b {font-size:20px;}
+  .pace-values strong {font-size:36px;}
+  .next-income>strong {font-size:26px;}
+
+  .plan-summary,.goal-section,.advance-control,.scenario-section,.journey,.reserve,
+  .transactions,.recurring-section,.analysis-hero,.analysis-grid .paper-section {
+    padding-top:18px;
+    padding-bottom:18px;
+  }
+}
+
+@media(max-width:380px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {grid-template-rows:auto 98px;min-height:156px;}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {width:98px;height:102px;top:50px;}
+  .movement-value>b,.roadmap-amount {font-size:17px!important;}
+  .plan-summary>div:first-child>strong {font-size:43px!important;}
+}
