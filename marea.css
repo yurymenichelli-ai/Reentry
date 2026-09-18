@@ -498,6 +498,32 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
   .plan-summary>div:first-child>strong {font-size:43px!important;}
 }
 
+/* Operational screens stay dense. Decorative figures are removed where they
+   force empty header bands; content starts immediately below the title. */
+@media(max-width:800px) {
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header {
+    display:flex;
+    min-height:0;
+    margin-bottom:16px;
+    padding:0 0 14px;
+    align-items:center;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>div:first-child,
+  .view-plan .page-header>div:first-child {
+    max-width:none;
+    padding:0;
+  }
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header::before {display:none;}
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>.button,
+  :is(.view-plan,.view-transactions,.view-analysis) .page-header>.header-actions {
+    margin-left:auto;
+  }
+
+  .saving-plans {padding-top:18px;}
+  .saving-plans::before {display:none;}
+  .saving-plans>.section-head {min-height:0;padding:0;}
+}
+
 /* Characters sit beside the content; they no longer reserve an empty band. */
 @media(max-width:800px) {
   :is(.view-plan,.view-transactions,.view-analysis) .page-header {
