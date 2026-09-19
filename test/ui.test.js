@@ -123,3 +123,30 @@ test('calendar filter shows one day and calculates its expense total', () => {
   vm.runInContext(source.slice(start,end),context);context.filterMovements();
   assert.deepEqual(rows.map(row=>row.hidden),[false,false,true]);assert.equal(summary.hidden,false);assert.equal(clear.hidden,false);assert.match(label.textContent,/18 settembre/);assert.equal(total.textContent,'27.30 €');
 });
+
+test('la spesa veloce chiede subito se usare conto o contanti', () => {
+  const source=readFileSync(new URL('app.js',root),'utf8');
+  const start=source.indexOf('function quickExpenseModal()');
+  const end=source.indexOf('function budgetMethodModal()',start);
+  const modal=source.slice(start,end);
+  assert.ok(modal.indexOf('class="channel-choice quick-channel"') < modal.indexOf('class="quick-options"'));
+  assert.match(modal,/name="channel" value="account"/);
+  assert.match(modal,/name="channel" value="cash"/);
+});
+
+test('eliminare un obiettivo rimuove anche preferenze precedenti e forza il ricalcolo', () => {
+  const source=readFileSync(new URL('app.js',root),'utf8');
+  const handler=source.slice(source.indexOf("if(e.target.closest('[data-clear-goal]'))"),source.indexOf("if(e.target.closest('[data-clear-accumulation]'))"));
+  assert.match(handler,/goalEnabled=false/);
+  assert.match(handler,/goalMonths=null/);
+  assert.match(handler,/targetDate:null/);
+  assert.match(handler,/dailySpendingTarget=null/);
+  assert.match(handler,/save\(\).*render\(\)/s);
+});
+
+test('la home mostra separatamente conto e contanti senza aprire la previsione', () => {
+  const source=readFileSync(new URL('app.js',root),'utf8');
+  assert.match(source,/class="balance-split"/);
+  assert.match(source,/money\(balances\.account\)/);
+  assert.match(source,/money\(balances\.cash\)/);
+});

@@ -730,3 +730,83 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
 @media(prefers-reduced-motion:reduce) {
   .modal-backdrop:not(:has(.login-scene)),.modal-backdrop>.modal:not(.login-scene){animation:none!important;}
 }
+
+/* Capital budgeting has its own home hierarchy, independent of income forecasts. */
+.quota-home {max-width:960px;margin:0 auto;padding:24px 0 48px;color:var(--text-primary);animation:quota-enter 260ms ease-out;}
+.quota-heading,.quota-capital,.quota-section-title,.quota-actions {display:flex;align-items:center;justify-content:space-between;gap:20px;}
+.quota-heading {align-items:flex-start;margin-bottom:32px;}
+.quota-heading h1 {font-size:clamp(36px,5vw,64px);line-height:1.04;letter-spacing:-.045em;margin:14px 0 0;}
+.quota-heading .text-button {flex-shrink:0;}
+.quota-capital {align-items:end;padding:0 0 22px;}
+.quota-capital>div {display:grid;gap:5px;}
+.quota-capital>div:last-child {text-align:right;}
+.quota-capital span,.quota-label>div>span,.quota-remaining>span {font-size:12px;color:var(--text-secondary);}
+.quota-capital strong {font:500 clamp(32px,4vw,48px)/1.1 var(--font-data);letter-spacing:-.045em;}
+.quota-capital b {font-size:22px;}
+.quota-capital .text-button {font-size:12px;padding:4px 0;text-align:inherit;}
+.quota-proportions {display:grid;grid-template-columns:5fr 3fr 2fr;gap:3px;margin-bottom:32px;}
+.quota-proportions span {padding:10px 12px;background:var(--text-primary);color:var(--surface-primary);font-size:12px;}
+.quota-proportions span:nth-child(2) {background:color-mix(in srgb,var(--text-primary) 78%,var(--surface-primary));}
+.quota-proportions span:nth-child(3) {background:color-mix(in srgb,var(--text-primary) 64%,var(--surface-primary));}
+.quota-section-title h2 {font-size:24px;margin:0;}
+.quota-section-title {margin-bottom:10px;}
+.quota-row {display:grid;grid-template-columns:1fr auto;gap:12px 20px;padding:26px 0 18px;border-bottom:1px solid var(--border-subtle);}
+.quota-label {display:flex;align-items:center;gap:18px;}
+.quota-label h3 {font-size:23px;margin:0 0 3px;}
+.quota-percent {font:500 38px/1 var(--font-data);letter-spacing:-.06em;color:var(--text-secondary);min-width:78px;}
+.quota-percent small {font-size:16px;}
+.quota-remaining {text-align:right;display:grid;gap:4px;}
+.quota-remaining strong {font:500 32px/1.1 var(--font-data);letter-spacing:-.04em;}
+.quota-track {grid-column:1/-1;height:5px;background:var(--border-subtle);overflow:hidden;margin-top:4px;}
+.quota-track i {display:block;height:100%;background:var(--text-primary);transform:scaleX(var(--quota-used));transform-origin:left;animation:quota-fill 420ms ease-out;}
+.quota-ledger {grid-column:1/-1;display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);}
+.quota-ledger b {color:var(--text-primary);margin-left:5px;font-weight:500;}
+.quota-categories {grid-column:1/-1;font-size:12px;}
+.quota-categories summary {cursor:pointer;color:var(--text-secondary);padding:6px 0;}
+.quota-categories summary span {margin-left:8px;}
+.quota-categories p,.quota-explanation p {line-height:1.7;color:var(--text-secondary);}
+.quota-warning {grid-column:1/-1;margin:0;color:var(--text-primary);font-size:13px;border-left:3px solid currentColor;padding-left:12px;}
+.quota-over .quota-track i {background:#b66446;}
+.quota-actions {margin:24px 0;}
+.quota-income {padding:20px;background:var(--surface-secondary);margin-bottom:24px;}
+.quota-income p {font-size:13px;}
+.quota-explanation {font-size:13px;padding:16px 0;border-top:1px solid var(--border-subtle);}
+.quota-explanation summary {cursor:pointer;}
+.quota-home button {min-height:44px;transition:transform 150ms ease,background-color 150ms ease;}
+.quota-home button:active {transform:scale(.98);}
+.quota-home :focus-visible {outline:2px solid var(--text-primary);outline-offset:4px;}
+.quota-home strong,.quota-home b {font-variant-numeric:tabular-nums;}
+@keyframes quota-enter {from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@keyframes quota-fill {from{transform:scaleX(0)}to{transform:scaleX(var(--quota-used))}}
+@media(max-width:800px) {
+ .view-dashboard.method-503020 main {background:var(--surface-primary);}
+ .quota-home {padding:16px 0 28px;}
+ .quota-heading {gap:8px;margin-bottom:26px;}
+ .quota-heading h1 {font-size:38px;}
+ .quota-heading .eyebrow {font-size:10px;letter-spacing:.03em;}
+ .quota-heading>.text-button {font-size:11px;}
+ .quota-capital {align-items:start;gap:12px;}
+ .quota-capital strong {font-size:32px;}
+ .quota-capital b {font-size:20px;}
+ .quota-capital>div:last-child {max-width:48%;}
+ .quota-section-title {align-items:start;gap:10px;}
+ .quota-section-title h2 {font-size:22px;max-width:210px;}
+ .quota-section-title .text-button {font-size:11px;}
+ .quota-row {gap:12px;padding:22px 0 14px;}
+ .quota-label {gap:10px;}
+ .quota-percent {font-size:30px;min-width:57px;}
+ .quota-label h3 {font-size:19px;}
+ .quota-label>div>span {display:none;}
+ .quota-remaining strong {font-size:26px;}
+ .quota-remaining>span {font-size:10px;}
+ .quota-actions {gap:8px;}
+ .quota-actions .button {font-size:13px;padding:12px 18px;}
+}
+@media(prefers-reduced-motion:reduce) {.quota-home,.quota-track i {animation:none;}.quota-home button {transition:none;}}
+.home-method-switch {display:flex;position:relative;z-index:2;gap:3px;width:max-content;padding:4px;margin:0 0 22px;background:var(--surface-secondary);border:1px solid var(--border-subtle);border-radius:28px;}
+.home-method-switch button {min-height:42px;min-width:116px;border:0;border-radius:24px;padding:10px 18px;background:transparent;color:var(--text-primary);font:500 13px var(--font-body);cursor:pointer;transition:background-color 180ms ease,color 180ms ease;}
+.home-method-switch button[aria-pressed=true] {background:var(--text-primary);color:var(--surface-primary);}
+.home-method-switch button:focus-visible {outline:2px solid var(--text-primary);outline-offset:3px;}
+.method-503020.view-dashboard main {background:var(--surface-primary);}
+@media(max-width:800px){.view-dashboard .home-method-switch{margin:8px 0 22px;}.method-503020.view-dashboard .quota-home{padding-top:0;}}
+@media(prefers-reduced-motion:reduce){.home-method-switch button{transition:none;}}

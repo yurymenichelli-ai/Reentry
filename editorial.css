@@ -869,3 +869,15 @@ input[type=range]:active::-webkit-slider-thumb {transform:scale(1.16);}
 }
 
 .plan-summary>div:first-child>strong,.scenario>strong,.next-income>strong,.spending-preview b {font-weight:700;font-variant-numeric:lining-nums tabular-nums;}
+
+/* Saldi sempre visibili e metodo di pagamento immediato. */
+.balance-split {display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0 8px;}
+.balance-split button {display:grid;gap:4px;min-width:0;padding:10px 12px;text-align:left;color:var(--text-primary);background:var(--surface-secondary);border:1px solid color-mix(in srgb,var(--border-subtle) 55%,transparent);border-radius:8px;cursor:pointer;transition:transform 140ms var(--ease-enter),border-color 140ms ease;}
+.balance-split button:active {transform:scale(.975);}
+.balance-split span {font-size:10px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.07em;}
+.balance-split strong {overflow:hidden;font:500 18px/1.1 var(--font-data);font-variant-numeric:tabular-nums;text-overflow:ellipsis;}
+.quick-channel {display:grid!important;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0 4px!important;padding:0;border:0;}
+.quick-channel legend {grid-column:1/-1;margin-bottom:2px;font-size:12px;color:var(--text-secondary);}
+.quick-channel label {margin:0!important;min-height:58px;padding:10px!important;}
+.quick-channel label span {display:grid;gap:2px;}
+.quick-channel label small {font-size:10px;font-weight:400;}
