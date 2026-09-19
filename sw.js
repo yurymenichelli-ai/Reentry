@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rientro-shell-v77';
+const CACHE_NAME = 'rientro-shell-v78';
 const APP_SHELL = [
   './',
   './index.html',
@@ -38,11 +38,12 @@ const APP_SHELL = [
   './engine-v31.js',
   './cloud.js?v=40',
   './capital-flow.js?v=25',
-  './manifest.webmanifest',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/icon-maskable-512.png',
-  './icons/apple-touch-icon.png'
+  './manifest.webmanifest?v=2',
+  './icons/icon-192.png?v=2',
+  './icons/icon-512.png?v=2',
+  './icons/icon-maskable-512.png?v=2',
+  './icons/apple-touch-icon.png?v=2',
+  './icons/favicon-32.png?v=2'
 ];
 
 self.addEventListener('install', event => {
