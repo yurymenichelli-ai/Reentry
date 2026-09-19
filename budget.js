@@ -1,4 +1,4 @@
-export const defaultCategories = {Casa:'needs',Alimentari:'needs',Trasporti:'needs',Benzina:'needs',Salute:'needs','Tempo libero':'wants','Cena fuori':'wants',Sigarette:'wants',Altro:'wants'};
+export const defaultCategories = {Debiti:'needs',Obiettivi:'future',Casa:'needs',Alimentari:'needs',Trasporti:'needs',Benzina:'needs',Salute:'needs','Tempo libero':'wants','Cena fuori':'wants',Sigarette:'wants',Altro:'wants'};
 export function startBudget(state, capital, reference = new Date()) {
   const day = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate(),23,59,59);
   state.budgetSnapshot = { capital: Math.max(0, Number(capital)||0), date: reference.toISOString(), includedIds: (state.transactions||[]).filter(t=>!t.recordedAt||new Date(`${t.recordedAt}T12:00:00`)<=day).map(t=>String(t.id)) };
@@ -13,7 +13,9 @@ export function capitalBudget(state, reference = new Date()) {
   for(const t of state.transactions||[]) {
     if(excluded.has(String(t.id)) || (t.recordedAt && new Date(`${t.recordedAt}T12:00:00`)>cutoff)) continue;
     if(t.type==='income') {unallocatedIncome+=Number(t.amount)||0;continue;}
-    const bucket=t.planKind?'future':categories[t.category]||'wants';
+    const category=t.planKind==='debt'?'Debiti':t.planKind==='saving'?'Obiettivi':t.category;
+    const selected=categories[category];
+    const bucket=['needs','wants','future'].includes(selected)?selected:'wants';
     spent[bucket]+=Number(t.amount)||0;
   }
   const capital=snapshot.capital;
