@@ -810,3 +810,52 @@ h1,h2,h3,.brand,.login-brand,.onboarding-brand,
 .method-503020.view-dashboard main {background:var(--surface-primary);}
 @media(max-width:800px){.view-dashboard .home-method-switch{margin:8px 0 22px;}.method-503020.view-dashboard .quota-home{padding-top:0;}}
 @media(prefers-reduced-motion:reduce){.home-method-switch button{transition:none;}}
+
+/* The three envelopes share the adaptive home's coastal editorial identity. */
+.quota-home {padding-top:0;max-width:1040px;}
+.quota-heading {position:relative;isolation:isolate;display:block;min-height:360px;margin:0;padding:38px;background:var(--photo) center 48%/cover;color:var(--text-primary);overflow:hidden;}
+.quota-heading::before {content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,color-mix(in srgb,var(--surface-primary) 48%,transparent),transparent 75%);}
+.quota-heading h1 {font-family:var(--font-editorial);font-weight:700;font-size:clamp(40px,5vw,62px);line-height:1.05;max-width:13ch;overflow-wrap:anywhere;}
+.quota-heading .eyebrow {text-transform:capitalize;letter-spacing:0;color:inherit;}
+.quota-hero-rule {display:block;width:34px;height:1px;background:currentColor;margin-top:24px;}
+.quota-mantra {position:absolute;right:38px;bottom:86px;font:italic 22px/1.5 var(--font-editorial);transform:rotate(-5deg);}
+.quota-hero-caption {position:absolute;bottom:44px;left:38px;font-size:11px;letter-spacing:.13em;text-transform:uppercase;}
+.quota-paper {position:relative;margin-top:-24px;padding:32px 34px 8px;background:var(--surface-primary);border-radius:50% 50% 0 0 / 22px 22px 0 0;}
+.quota-capital {padding-top:6px;padding-bottom:24px;}
+.quota-capital strong {font:700 clamp(38px,5vw,54px)/1.1 var(--font-editorial);letter-spacing:-.05em;}
+.quota-proportions {gap:5px;margin:2px 0 32px;}
+.quota-proportions span {padding:8px 12px;border-radius:3px;font-variant-numeric:tabular-nums;}
+.quota-row {position:relative;padding:24px 0 18px;}
+.quota-percent {display:grid;place-content:center;grid-auto-flow:column;align-items:baseline;min-width:64px;min-height:64px;font-size:30px;border-radius:50%;background:var(--surface-secondary);color:var(--text-primary);}
+.quota-wants .quota-percent {border:1px solid var(--border-subtle);background:transparent;}
+.quota-future .quota-percent {border-radius:50% 50% 12px 12px;}
+.quota-label {gap:16px;}
+.quota-label h3 {font-family:var(--font-editorial);font-weight:700;}
+.quota-remaining strong {font-family:var(--font-editorial);font-weight:700;font-size:36px;}
+.quota-track {height:6px;border-radius:6px;}
+.quota-track i {border-radius:inherit;background:var(--accent-primary);}
+.quota-over .quota-track i {background:#b66446;}
+.quota-categories summary {min-height:34px;display:flex;align-items:center;justify-content:space-between;list-style:none;}
+.quota-categories summary::after {content:'+';margin-left:auto;padding-left:12px;font-size:18px;}
+.quota-categories[open] summary::after {content:'−';}
+.quota-categories summary span {margin-right:auto;}
+.quota-actions .button {border-radius:28px;}
+.quota-income {border-radius:8px;}
+@media(min-width:801px){.method-503020.view-dashboard main {display:block;}.method-503020 .home-method-switch {margin-left:auto;margin-right:auto;}.quota-heading {min-height:390px;}.quota-paper {padding-left:48px;padding-right:48px;}}
+@media(max-width:800px){
+ .method-503020.view-dashboard .quota-home {margin:0 -22px;padding-top:0;}
+ .quota-heading {min-height:330px;padding:28px 22px;background-position:center 45%;}
+ .quota-heading h1 {font-size:44px;margin-top:16px;}
+ .quota-heading .eyebrow {font-size:12px;}
+ .quota-mantra {right:26px;bottom:82px;font-size:19px;}
+ .quota-hero-caption {left:22px;bottom:45px;font-size:10px;}
+ .quota-paper {padding:28px 22px 12px;}
+ .quota-capital strong {font-size:40px;}
+ .quota-percent {min-width:52px;min-height:52px;font-size:25px;}
+ .quota-percent small {font-size:12px;}
+ .quota-label {gap:12px;}
+ .quota-remaining strong {font-size:29px;}
+ .quota-label h3 {font-size:19px;}
+ .quota-section-title h2 {font-size:24px;}
+}
+@media(max-width:360px){.method-503020.view-dashboard .quota-home {margin-left:-16px;margin-right:-16px;}.quota-paper {padding-left:16px;padding-right:16px;}.quota-label {gap:8px;}.quota-label h3 {font-size:17px;}.quota-remaining strong {font-size:25px;}}
