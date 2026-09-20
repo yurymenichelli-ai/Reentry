@@ -1,4 +1,4 @@
-import { closeDialog, reducedMotion } from './motion.js?v=45';
+import { closeDialog, reducedMotion } from './motion.js?v=46';
 /* Presentation-only behavior. Financial state and persistence live in app.js. */
 const focusable = 'button:not([disabled]),a[href],input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex="0"]';
 let activeDialog = null;

@@ -1,6 +1,6 @@
 import { budgetHomeContent } from './budget-home.js';
 import { defaultCategories, startBudget, capitalBudget } from './budget.js';
-import { revealPage, settleFigure, closeDialog } from './motion.js?v=45';
+import { revealPage, settleFigure, closeDialog } from './motion.js?v=46';
 import { accountForecast, accumulationPlan, accumulationPlans, applyPlanContribution, calculatePlan, capitalBalances, evaluateGoal, money, monthlyAmount, monthlyTimeline, paymentBreakdown, planScenarios, selectedDebtPlan, spendingAnalysis, spendingPace, spendingPaceInsight, totalCapital } from './engine-v31.js';
 import { commitDebt } from './debt-flow.js';
 import { commitRecurring } from './recurring-flow.js';
