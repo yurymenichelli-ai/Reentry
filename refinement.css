@@ -145,3 +145,29 @@ button:focus-visible,summary:focus-visible {outline:2px solid var(--accent-prima
 .method-bar>.text-button {margin:0!important;}
 .theme-picker>div {border-radius:14px;overflow:hidden;padding:3px;background:var(--surface-secondary);}
 .theme-picker button {border-radius:11px;min-height:42px;}
+/* Prioritize decisions over decorative height. */
+.quota-heading {min-height:260px;}
+.quota-heading h1 {font-size:40px;}
+.quota-mantra {bottom:64px;font-size:18px;}
+.quota-hero-caption {bottom:34px;}
+.quota-paper {padding-top:24px;}
+.quota-capital {align-items:start;gap:20px;}
+.quota-capital>div:first-child {flex:1;}
+.quota-capital>div:last-child {border-left:1px solid var(--border-subtle);padding-left:16px;flex:1;}
+.quota-capital strong {font-size:36px;}
+.quota-capital b {font-size:26px;font-weight:500;letter-spacing:-.04em;}
+.quota-capital .text-button {line-height:1.5;}
+.quota-proportions {margin-bottom:22px;}
+.quota-heading .quota-hero-rule {margin-top:16px;}
+.quota-section-title h2 {font-size:23px;max-width:220px;}
+.category-impact {display:flex;flex-wrap:wrap;gap:4px 8px;margin:0 0 16px;padding:12px 14px;border-radius:12px;background:var(--surface-secondary);font-size:12px;color:var(--text-secondary);}
+.category-impact strong {color:var(--text-primary);font-weight:600;}
+.is-income .category-impact {display:none;}
+.budget-method-modal .category-assignment {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);align-items:center;gap:12px;margin:0;padding:10px 0;border-bottom:1px solid var(--border-subtle);font-size:14px;}
+.budget-method-modal .category-assignment select {min-height:44px;font-size:13px;padding:10px;}
+.budget-method-modal>.button {position:sticky;bottom:0;z-index:2;box-shadow:0 0 0 8px var(--surface-elevated);margin-top:24px;}
+.method-bar span {font-size:11px;}.method-bar b {font-size:13px;}.method-bar>.text-button {min-height:36px;}
+.quota-ledger,.quota-categories {font-size:13px;}
+.quota-categories summary {min-height:44px;}
+.movement-value button {min-height:44px;}
+@media(max-width:360px){.quota-heading{min-height:250px;}.quota-heading h1{font-size:36px;}.quota-mantra{font-size:16px;}.quota-capital strong{font-size:30px;}.quota-capital b{font-size:23px;}.quota-capital>div:last-child{padding-left:12px;}.budget-method-modal .category-assignment{gap:8px;}}
