@@ -232,3 +232,19 @@ button:focus-visible,summary:focus-visible {outline:2px solid var(--accent-prima
 .guide-step h2 {font-size:24px;font-weight:500;margin:0 0 12px;}.guide-step p {font-size:14px;color:var(--text-secondary);line-height:1.75;margin:0;}
 .guide-note {font-size:12px;color:var(--text-secondary);padding:18px;background:var(--surface-secondary);border-radius:12px;margin:12px 0 24px;line-height:1.6;}
 .shell:not(.view-dashboard) .mobile-masthead .brand {display:flex!important;flex-direction:row;}
+/* Modern native typography, available offline without external font downloads. */
+:root {
+ --font-editorial:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Segoe UI',sans-serif;
+ --font-display:var(--font-editorial);
+ --font-body:-apple-system,BlinkMacSystemFont,'Helvetica Neue','Segoe UI',sans-serif;
+ --font-data:var(--font-body);
+}
+h1,h2,h3 {font-weight:600;letter-spacing:-.045em;}
+.brand,.mobile-masthead .brand,.auth-brand {font-weight:650;letter-spacing:-.055em;}
+.quota-heading h1,.view-dashboard .page-header h1 {font-weight:600;letter-spacing:-.055em;}
+.settings-heading h1,.shell:not(.view-dashboard) .page-header h1 {font-weight:600;letter-spacing:-.05em;}
+.auth-introduction h1 {font-weight:600;letter-spacing:-.055em;}
+.auth-panel h2,.modal h2,.section-head h2,.quota-section-title h2,.guide-step h2 {font-weight:600;letter-spacing:-.035em;}
+.quota-label h3 {font-weight:600;letter-spacing:-.035em;}
+.quota-mantra,.home-mantra,.login-mantra {font-style:normal;font-weight:400;letter-spacing:-.025em;}
+.capital-value,.quota-capital strong,.quota-remaining strong,.plan-summary>div:first-child>strong {font-family:var(--font-data);font-weight:500;letter-spacing:-.055em;}
