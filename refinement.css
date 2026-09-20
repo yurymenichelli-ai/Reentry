@@ -202,3 +202,33 @@ button:focus-visible,summary:focus-visible {outline:2px solid var(--accent-prima
 .auth-panel .form-error {color:#ffd0b9;background:#573e32;border-radius:8px;padding:10px;font-size:13px;}
 @media(min-width:801px){.modal-backdrop.login-backdrop{background:#092320!important;}.login-backdrop>.modal.auth-welcome{padding-top:38px!important;}.auth-panel{padding:30px;}}
 @media(max-width:360px){.login-backdrop>.modal.auth-welcome{padding:24px 16px!important;}.auth-introduction{margin:30px 0 24px;}.auth-panel{padding:22px 18px;}.auth-introduction h1{font-size:38px;}}
+/* Settings are a destination, with grouped preferences and an integrated guide. */
+.settings-heading {margin:12px 0 30px;}
+.settings-heading h1 {font:500 40px/1.06 var(--font-editorial);letter-spacing:-.05em;margin:10px 0 14px;}
+.settings-heading>p {color:var(--text-secondary);font-size:14px;line-height:1.6;max-width:38ch;}
+.settings-group {margin:0 0 26px;border:1px solid var(--border-subtle);border-radius:18px;background:var(--surface-primary);overflow:hidden;}
+.settings-group>h2 {font:500 11px var(--font-body);letter-spacing:.1em;text-transform:uppercase;padding:16px 18px 12px;margin:0;color:var(--text-secondary);background:var(--surface-secondary);}
+.settings-row,.settings-disclosure>summary {display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;padding:17px 18px;border:0;background:transparent;text-align:left;color:var(--text-primary);min-height:72px;cursor:pointer;list-style:none;}
+.settings-row+ .settings-row,.settings-disclosure+.settings-appearance {border-top:1px solid var(--border-subtle);}
+.settings-row>span:first-child,.settings-disclosure>summary>span:first-child {display:grid;gap:5px;min-width:0;}
+.settings-row strong,.settings-disclosure strong {font-size:15px;font-weight:500;}
+.settings-row small,.settings-disclosure small {font-size:12px;color:var(--text-secondary);line-height:1.45;overflow-wrap:anywhere;}
+.settings-row>span:last-child,.settings-disclosure>summary>span:last-child {font-size:24px;color:var(--text-secondary);}
+.settings-disclosure>summary::-webkit-details-marker {display:none;}
+.settings-disclosure[open]>summary>span:last-child {transform:rotate(90deg);}
+.settings-row:active {background:var(--surface-secondary);}
+.settings-appearance {padding:18px;}.settings-appearance .theme-picker {margin:0;}
+.settings-appearance p {font-size:11px;color:var(--text-secondary);margin:10px 0 0;}
+.settings-name-form,.settings-detail {padding:0 18px 20px;}
+.settings-name-form label {display:grid;gap:8px;font-size:12px;}
+.settings-name-form input {width:100%;font-size:16px;min-height:48px;border:1px solid var(--border-subtle);border-radius:12px;padding:12px;background:var(--surface-secondary);color:var(--text-primary);}
+.settings-name-form .button {margin-top:12px;width:100%;}
+.settings-detail p {font-size:13px;color:var(--text-secondary);line-height:1.7;}
+.settings-danger .settings-row strong {color:var(--negative);}
+.settings-footer {padding:4px 0 20px;text-align:center;color:var(--text-secondary);}
+.settings-footer .profile-signature {justify-content:center;margin:0;}.settings-footer p {font-size:12px;margin-top:10px;}
+.guide-step {display:grid;grid-template-columns:32px minmax(0,1fr);gap:15px;padding:24px 0;border-top:1px solid var(--border-subtle);}
+.guide-step>span {font:500 12px var(--font-data);color:var(--text-secondary);padding-top:5px;}
+.guide-step h2 {font-size:24px;font-weight:500;margin:0 0 12px;}.guide-step p {font-size:14px;color:var(--text-secondary);line-height:1.75;margin:0;}
+.guide-note {font-size:12px;color:var(--text-secondary);padding:18px;background:var(--surface-secondary);border-radius:12px;margin:12px 0 24px;line-height:1.6;}
+.shell:not(.view-dashboard) .mobile-masthead .brand {display:flex!important;flex-direction:row;}
