@@ -171,3 +171,34 @@ button:focus-visible,summary:focus-visible {outline:2px solid var(--accent-prima
 .quota-categories summary {min-height:44px;}
 .movement-value button {min-height:44px;}
 @media(max-width:360px){.quota-heading{min-height:250px;}.quota-heading h1{font-size:36px;}.quota-mantra{font-size:16px;}.quota-capital strong{font-size:30px;}.quota-capital b{font-size:23px;}.quota-capital>div:last-child{padding-left:12px;}.budget-method-modal .category-assignment{gap:8px;}}
+/* Original Rientro signature across the product. */
+.brand,.mobile-masthead .brand,.auth-brand,.profile-signature,.onboarding-brand {display:flex!important;align-items:center;gap:10px;}
+.brand-symbol {display:block;width:38px;height:38px;flex:0 0 auto;border-radius:11px;object-fit:cover;box-shadow:0 2px 5px rgb(18 48 39 / .08);}
+.auth-brand .brand-symbol {width:48px;height:48px;border-radius:14px;}
+.profile-signature {font:500 22px var(--font-editorial);margin:0 0 22px;}
+.profile-signature .brand-symbol {width:34px;height:34px;}
+/* A full welcome scene with a separate, high-contrast account surface. */
+.modal-backdrop.login-backdrop {padding:0!important;background:#102d2c!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;overflow:auto;align-items:flex-start!important;}
+.login-backdrop>.modal.auth-welcome {position:relative;isolation:isolate;display:block;width:100%;max-width:560px!important;min-height:100dvh;max-height:none!important;margin:0 auto!important;padding:32px 24px calc(30px + env(safe-area-inset-bottom))!important;border:0!important;border-radius:0!important;background:#123b38!important;color:#f5f0df;overflow:visible;box-shadow:none;}
+.auth-welcome::before {content:''!important;position:absolute!important;inset:0 0 auto!important;width:100%!important;height:530px!important;border-radius:0!important;z-index:-1;background:linear-gradient(180deg,rgba(9,33,31,.25),rgba(12,39,35,.12) 48%,#123b38 100%),url('assets/marea-home-dark.jpg') center 45%/cover!important;}
+.auth-welcome::after {display:none!important;}
+.auth-brand {position:relative;font:500 32px var(--font-editorial);letter-spacing:-.05em;color:#fff7e5;}
+.auth-introduction {margin:42px 0 30px;}
+.auth-eyebrow {font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:#d3e2d5;}
+.auth-introduction h1 {font:500 clamp(38px,9vw,52px)/1.04 var(--font-editorial);letter-spacing:-.05em;color:#fff9e9;margin:15px 0 16px;}
+.auth-introduction p {font-size:14px;line-height:1.6;color:#e0e8dc;margin:0;}
+.auth-panel {padding:26px 22px 20px;border:1px solid rgba(255,255,255,.16);border-radius:24px;background:rgba(12,37,34,.94);box-shadow:0 18px 48px rgba(0,0,0,.18);}
+.auth-panel .kicker {font-size:10px;letter-spacing:.12em;color:#b7d0c0;}
+.auth-panel h2 {font:500 31px var(--font-editorial);color:#fff7e6;margin:7px 0 22px;}
+.auth-panel #cloud-auth-form {margin:0;}
+.auth-panel label {display:grid;gap:8px;color:#e5eddf;font-size:12px;font-weight:500;margin:0 0 16px;}
+.auth-panel #cloud-auth-form input {background:#23453f!important;border:1px solid #49685d!important;color:#fff9e9!important;border-radius:12px!important;min-height:50px;padding:12px 14px;font-size:16px;box-shadow:none;}
+.auth-panel input::placeholder {color:#b1c4b5;opacity:1;}
+.auth-panel input:focus {outline:2px solid #c4dbc4!important;outline-offset:2px;}
+.auth-panel .button {display:flex;justify-content:space-between;align-items:center;background:#e9e9d2;color:#193c31;border:0;min-height:52px;border-radius:13px;margin:23px 0 8px;}
+.auth-register {display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:2px 8px;font-size:12px;color:#c7d5c8;}
+.auth-register .text-button {color:#f4edce;font-size:13px;min-height:44px;}
+.auth-footnote {margin:18px 0 0;padding-top:18px;border-top:1px solid #34564a;color:#b9cdbd;font-size:11px;line-height:1.6;text-align:center;}
+.auth-panel .form-error {color:#ffd0b9;background:#573e32;border-radius:8px;padding:10px;font-size:13px;}
+@media(min-width:801px){.modal-backdrop.login-backdrop{background:#092320!important;}.login-backdrop>.modal.auth-welcome{padding-top:38px!important;}.auth-panel{padding:30px;}}
+@media(max-width:360px){.login-backdrop>.modal.auth-welcome{padding:24px 16px!important;}.auth-introduction{margin:30px 0 24px;}.auth-panel{padding:22px 18px;}.auth-introduction h1{font-size:38px;}}
